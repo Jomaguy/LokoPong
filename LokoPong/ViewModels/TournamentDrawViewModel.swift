@@ -64,74 +64,160 @@ class TournamentDrawViewModel: ObservableObject {
     }
     
     private func generateBrackets(with teams: [TeamData]) {
-        // Create a working copy of teams and pad with BYE entries if needed
+        // Create a working copy of teams
         var tournamentTeams = teams
         
-        // If we have fewer than 16 teams, add BYE placeholders
-        if tournamentTeams.count < 16 {
-            print("⚠️ Not enough teams (\(tournamentTeams.count)/16) - adding BYE placeholders")
+        // Determine the optimal bracket size based on the number of teams
+        let bracketSize = determineBracketSize(teamCount: tournamentTeams.count)
+        print("🏆 Creating tournament bracket with \(bracketSize) slots for \(tournamentTeams.count) teams")
+        
+        // Pad with BYE entries if needed
+        if tournamentTeams.count < bracketSize {
+            print("⚠️ Not enough teams (\(tournamentTeams.count)/\(bracketSize)) - adding BYE placeholders")
             
-            // Add BYE teams until we have 16
-            for i in tournamentTeams.count..<16 {
+            // Add BYE teams until we reach the bracket size
+            for i in tournamentTeams.count..<bracketSize {
                 let byeTeam = TeamData(id: "bye-\(i)", name: "BYE")
                 tournamentTeams.append(byeTeam)
             }
         }
         
-        // Create brackets with actual team names + BYE teams
-        let eightsBracket = Bracket(name: "Eights", matches: [
-            createMatch(team1: tournamentTeams[0], team2: tournamentTeams[1]),
-            createMatch(team1: tournamentTeams[2], team2: tournamentTeams[3]),
-            createMatch(team1: tournamentTeams[4], team2: tournamentTeams[5]),
-            createMatch(team1: tournamentTeams[6], team2: tournamentTeams[7]),
-            createMatch(team1: tournamentTeams[8], team2: tournamentTeams[9]),
-            createMatch(team1: tournamentTeams[10], team2: tournamentTeams[11]),
-            createMatch(team1: tournamentTeams[12], team2: tournamentTeams[13]),
-            createMatch(team1: tournamentTeams[14], team2: tournamentTeams[15])
-        ])
+        // Generate brackets based on the bracket size
+        var allBrackets: [Bracket] = []
         
-        // Determine winners based on BYE rules
-        let quarterTeams = [
-            getWinner(team1: tournamentTeams[0], team2: tournamentTeams[1]),
-            getWinner(team1: tournamentTeams[2], team2: tournamentTeams[3]),
-            getWinner(team1: tournamentTeams[4], team2: tournamentTeams[5]),
-            getWinner(team1: tournamentTeams[6], team2: tournamentTeams[7]),
-            getWinner(team1: tournamentTeams[8], team2: tournamentTeams[9]),
-            getWinner(team1: tournamentTeams[10], team2: tournamentTeams[11]),
-            getWinner(team1: tournamentTeams[12], team2: tournamentTeams[13]),
-            getWinner(team1: tournamentTeams[14], team2: tournamentTeams[15])
-        ]
+        // First round (could be Eights, Quarter Finals, Semi Finals, or Grand Finals depending on bracket size)
+        var firstRoundMatches: [MatchData] = []
+        var firstRoundName = ""
         
-        let quarterFinalsBracket = Bracket(name: "Quarter Finals", matches: [
-            createMatch(team1: quarterTeams[0], team2: quarterTeams[1]),
-            createMatch(team1: quarterTeams[2], team2: quarterTeams[3]),
-            createMatch(team1: quarterTeams[4], team2: quarterTeams[5]),
-            createMatch(team1: quarterTeams[6], team2: quarterTeams[7])
-        ])
+        // Set up the first round based on bracket size
+        switch bracketSize {
+        case 16:
+            firstRoundName = "Eights"
+            firstRoundMatches = [
+                createMatch(team1: tournamentTeams[0], team2: tournamentTeams[1]),
+                createMatch(team1: tournamentTeams[2], team2: tournamentTeams[3]),
+                createMatch(team1: tournamentTeams[4], team2: tournamentTeams[5]),
+                createMatch(team1: tournamentTeams[6], team2: tournamentTeams[7]),
+                createMatch(team1: tournamentTeams[8], team2: tournamentTeams[9]),
+                createMatch(team1: tournamentTeams[10], team2: tournamentTeams[11]),
+                createMatch(team1: tournamentTeams[12], team2: tournamentTeams[13]),
+                createMatch(team1: tournamentTeams[14], team2: tournamentTeams[15])
+            ]
+        case 8:
+            firstRoundName = "Quarter Finals"
+            firstRoundMatches = [
+                createMatch(team1: tournamentTeams[0], team2: tournamentTeams[1]),
+                createMatch(team1: tournamentTeams[2], team2: tournamentTeams[3]),
+                createMatch(team1: tournamentTeams[4], team2: tournamentTeams[5]),
+                createMatch(team1: tournamentTeams[6], team2: tournamentTeams[7])
+            ]
+        case 4:
+            firstRoundName = "Semi Finals"
+            firstRoundMatches = [
+                createMatch(team1: tournamentTeams[0], team2: tournamentTeams[1]),
+                createMatch(team1: tournamentTeams[2], team2: tournamentTeams[3])
+            ]
+        case 2:
+            // For 2 teams, we go directly to the finals
+            firstRoundName = "Grand Finals"
+            firstRoundMatches = [
+                createMatch(team1: tournamentTeams[0], team2: tournamentTeams[1])
+            ]
+            
+            // Add finals and exit early since we don't need to generate more rounds
+            allBrackets.append(Bracket(name: firstRoundName, matches: firstRoundMatches))
+            DispatchQueue.main.async {
+                self.brackets = allBrackets
+            }
+            return
+        default:
+            print("❌ Invalid bracket size: \(bracketSize)")
+            return
+        }
         
-        let semiTeams = [
-            getWinner(team1: quarterTeams[0], team2: quarterTeams[1]),
-            getWinner(team1: quarterTeams[2], team2: quarterTeams[3]),
-            getWinner(team1: quarterTeams[4], team2: quarterTeams[5]),
-            getWinner(team1: quarterTeams[6], team2: quarterTeams[7])
-        ]
+        // Add first round to brackets
+        allBrackets.append(Bracket(name: firstRoundName, matches: firstRoundMatches))
         
-        let semiFinalsBracket = Bracket(name: "Semi Finals", matches: [
-            createMatch(team1: semiTeams[0], team2: semiTeams[1]),
-            createMatch(team1: semiTeams[2], team2: semiTeams[3])
-        ])
+        // Process first round to get teams for the next round
+        var currentRoundTeams = tournamentTeams
+        var nextRoundTeams: [TeamData] = []
         
+        // Generate subsequent rounds based on bracket size
+        if bracketSize >= 8 { // For 8 or 16 team brackets, we need Quarter Finals
+            if bracketSize == 16 {
+                // Quarter Finals for 16-team bracket
+                nextRoundTeams = [
+                    getWinner(team1: currentRoundTeams[0], team2: currentRoundTeams[1]),
+                    getWinner(team1: currentRoundTeams[2], team2: currentRoundTeams[3]),
+                    getWinner(team1: currentRoundTeams[4], team2: currentRoundTeams[5]),
+                    getWinner(team1: currentRoundTeams[6], team2: currentRoundTeams[7]),
+                    getWinner(team1: currentRoundTeams[8], team2: currentRoundTeams[9]),
+                    getWinner(team1: currentRoundTeams[10], team2: currentRoundTeams[11]),
+                    getWinner(team1: currentRoundTeams[12], team2: currentRoundTeams[13]),
+                    getWinner(team1: currentRoundTeams[14], team2: currentRoundTeams[15])
+                ]
+                
+                let quarterFinalsBracket = Bracket(name: "Quarter Finals", matches: [
+                    createMatch(team1: nextRoundTeams[0], team2: nextRoundTeams[1]),
+                    createMatch(team1: nextRoundTeams[2], team2: nextRoundTeams[3]),
+                    createMatch(team1: nextRoundTeams[4], team2: nextRoundTeams[5]),
+                    createMatch(team1: nextRoundTeams[6], team2: nextRoundTeams[7])
+                ])
+                
+                allBrackets.append(quarterFinalsBracket)
+                currentRoundTeams = nextRoundTeams
+            }
+            
+            // Semi Finals for 8 or 16-team brackets
+            if bracketSize == 8 {
+                nextRoundTeams = [
+                    getWinner(team1: currentRoundTeams[0], team2: currentRoundTeams[1]),
+                    getWinner(team1: currentRoundTeams[2], team2: currentRoundTeams[3]),
+                    getWinner(team1: currentRoundTeams[4], team2: currentRoundTeams[5]),
+                    getWinner(team1: currentRoundTeams[6], team2: currentRoundTeams[7])
+                ]
+            } else { // 16-team bracket - same calculation but already done in the Quarter Finals step
+                // No need to recalculate - nextRoundTeams was already populated in the Quarter Finals section
+            }
+            
+            let semiFinalsBracket = Bracket(name: "Semi Finals", matches: [
+                createMatch(team1: nextRoundTeams[0], team2: nextRoundTeams[1]),
+                createMatch(team1: nextRoundTeams[2], team2: nextRoundTeams[3])
+            ])
+            
+            allBrackets.append(semiFinalsBracket)
+            currentRoundTeams = nextRoundTeams
+        }
+        
+        // Final round for all bracket sizes
+        // For 4, 8, and 16-team brackets, we need the final match between the winners of the previous round
         let finalTeams = [
-            getWinner(team1: semiTeams[0], team2: semiTeams[1]),
-            getWinner(team1: semiTeams[2], team2: semiTeams[3])
+            getWinner(team1: currentRoundTeams[0], team2: currentRoundTeams[1]),
+            getWinner(team1: currentRoundTeams[2], team2: currentRoundTeams[3])
         ]
         
         let finalsBracket = Bracket(name: "Grand Finals", matches: [
             createMatch(team1: finalTeams[0], team2: finalTeams[1])
         ])
         
+        allBrackets.append(finalsBracket)
+        
+        // Update the UI on the main thread
         DispatchQueue.main.async {
-            self.brackets = [eightsBracket, quarterFinalsBracket, semiFinalsBracket, finalsBracket]
+            self.brackets = allBrackets
+        }
+    }
+    
+    // Helper method to determine the optimal bracket size
+    private func determineBracketSize(teamCount: Int) -> Int {
+        if teamCount <= 2 {
+            return 2 // 1 round: Grand Finals only
+        } else if teamCount <= 4 {
+            return 4 // 2 rounds: Semi Finals, Finals
+        } else if teamCount <= 8 {
+            return 8 // 3 rounds: Quarter Finals, Semi Finals, Finals
+        } else {
+            return 16 // 4 rounds: Eights, Quarter Finals, Semi Finals, Finals
         }
     }
     
