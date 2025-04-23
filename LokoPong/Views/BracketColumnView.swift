@@ -28,7 +28,6 @@ struct BracketColumnView: View {
     let columnIndex: Int             // Position of this column in the bracket
     let focusedColumnIndex: Int      // Currently focused column index
     let lastColumnIndex: Int         // Index of the final column
-    let didTapCell: (MatchData) -> Void  // Callback for cell selection
     
     var body: some View {
             LazyVStack(spacing: 0) {
@@ -40,11 +39,6 @@ struct BracketColumnView: View {
                                           isCollapsed: columnIndex < focusedColumnIndex,  // Collapse columns before focused column
                                           isFirstColumn: columnIndex == 0,
                                           isLastColumn: columnIndex == lastColumnIndex)
-                    
-                    // Handle cell tap interaction
-                    .onTapGesture {
-                        didTapCell(bracket.matches[matchIndex])
-                    }
                 }
             }
         }
@@ -73,8 +67,7 @@ struct BracketColumnView_Previews: PreviewProvider {
             BracketColumnView(bracket: previewBracket,
                                         columnIndex: 0,
                                         focusedColumnIndex: 0,
-                                        lastColumnIndex: 2,
-                                        didTapCell: { _ in })
+                                        lastColumnIndex: 2)
                 .padding(.horizontal)
         }
     }

@@ -50,10 +50,6 @@ struct BracketCell: View {
                     
                     team1ScoreArea      // First team score display
                     team2ScoreArea      // Second team score display
-                    
-                    if !isCollapsed {
-                        touchForMoreInfoArea  // Interaction hint
-                    }
                 }
                 
                 rightLineArea           // Right connecting line

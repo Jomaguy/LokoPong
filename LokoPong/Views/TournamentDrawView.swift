@@ -20,7 +20,6 @@ struct TournamentDrawView: View {
     // Layout and data properties
     private let columnWidth: CGFloat = UIScreen.main.bounds.width * 0.9
     @ObservedObject var viewModel: TournamentDrawViewModel
-    @State private var presentingMatchDetails: MatchData? // Selected match for detail view
     
     // Gesture and navigation state
     @State private var dragOffsetX: CGFloat = 0 // Current drag gesture offset
@@ -72,14 +71,6 @@ struct TournamentDrawView: View {
                         )
                     }
                     
-                    // Match details modal presentation
-                    .sheet(item: $presentingMatchDetails, onDismiss: { presentingMatchDetails = nil }) { details in
-                        MatchDetailsView(matchData: details)
-                            .padding(.horizontal)
-                            .presentationDetents([.medium])
-                            .presentationDragIndicator(.visible)
-                    }
-                    
                     // Coordinate all changes related to column changing in one place
                     .onChange(of: focusedColumnIndex) { newValue in
                         // Perform all related updates in a single animation
@@ -106,9 +97,7 @@ struct TournamentDrawView: View {
                 BracketColumnView(bracket: viewModel.brackets[columnIndex],
                                 columnIndex: columnIndex,
                                 focusedColumnIndex: focusedColumnIndex,
-                                lastColumnIndex: numberOfColumns - 1,
-                                didTapCell: { matchData in presentingMatchDetails = matchData }
-                )
+                                lastColumnIndex: numberOfColumns - 1)
                 .frame(width: columnWidth)
             }
         }
