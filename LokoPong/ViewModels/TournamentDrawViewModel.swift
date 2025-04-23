@@ -65,22 +65,14 @@ class TournamentDrawViewModel: ObservableObject {
     
     private func generateBrackets(with teams: [TeamData]) {
         // Create a working copy of teams
-        var tournamentTeams = teams
+        let actualTeams = teams
         
         // Determine the optimal bracket size based on the number of teams
-        let bracketSize = determineBracketSize(teamCount: tournamentTeams.count)
-        print("🏆 Creating tournament bracket with \(bracketSize) slots for \(tournamentTeams.count) teams")
+        let bracketSize = determineBracketSize(teamCount: actualTeams.count)
+        print("🏆 Creating tournament bracket with \(bracketSize) slots for \(actualTeams.count) teams")
         
-        // Pad with BYE entries if needed
-        if tournamentTeams.count < bracketSize {
-            print("⚠️ Not enough teams (\(tournamentTeams.count)/\(bracketSize)) - adding BYE placeholders")
-            
-            // Add BYE teams until we reach the bracket size
-            for i in tournamentTeams.count..<bracketSize {
-                let byeTeam = TeamData(id: "bye-\(i)", name: "BYE")
-                tournamentTeams.append(byeTeam)
-            }
-        }
+        // Distribute teams and BYEs evenly throughout the bracket
+        let tournamentTeams = distributeTeamsAndByes(teams: actualTeams, bracketSize: bracketSize)
         
         // Generate brackets dynamically based on the bracket size
         var allBrackets: [Bracket] = []
@@ -152,6 +144,113 @@ class TournamentDrawViewModel: ObservableObject {
         // Update the UI on the main thread
         DispatchQueue.main.async {
             self.brackets = allBrackets
+        }
+    }
+    
+    // Helper method to distribute teams and BYEs evenly throughout the bracket
+    private func distributeTeamsAndByes(teams: [TeamData], bracketSize: Int) -> [TeamData] {
+        // Number of BYEs needed
+        let byeCount = bracketSize - teams.count
+        
+        // If no BYEs needed, return the teams as is
+        if byeCount <= 0 {
+            return teams
+        }
+        
+        print("⚠️ Adding \(byeCount) BYEs distributed optimally throughout the bracket")
+        
+        // Create an array to represent positions in the bracket
+        // true = BYE, false = real team
+        var isByePosition = [Bool](repeating: false, count: bracketSize)
+        
+        // Distribute BYEs optimally using a power-of-2 pattern
+        // This ensures BYEs don't face each other in the first round
+        distributeByes(isByePosition: &isByePosition, startIdx: 0, endIdx: bracketSize - 1, 
+                       byesRemaining: byeCount, bracketSize: bracketSize)
+        
+        // Now create the resulting array with teams and BYEs properly positioned
+        var result = [TeamData]()
+        var teamIndex = 0
+        
+        for i in 0..<bracketSize {
+            if isByePosition[i] {
+                // This position gets a BYE
+                result.append(TeamData(id: "bye-\(i)", name: "BYE"))
+            } else if teamIndex < teams.count {
+                // This position gets a real team
+                result.append(teams[teamIndex])
+                teamIndex += 1
+            }
+        }
+        
+        return result
+    }
+    
+    // Helper method to recursively distribute BYEs optimally throughout the bracket
+    private func distributeByes(isByePosition: inout [Bool], startIdx: Int, endIdx: Int, 
+                               byesRemaining: Int, bracketSize: Int) {
+        // Base case: no more BYEs to distribute
+        if byesRemaining <= 0 {
+            return
+        }
+        
+        // Base case: only one position to consider
+        if startIdx == endIdx {
+            if byesRemaining > 0 {
+                isByePosition[startIdx] = true
+            }
+            return
+        }
+        
+        // Calculate the size of this sub-bracket
+        let size = endIdx - startIdx + 1
+        
+        // For optimal distribution in a tournament, BYEs should be placed
+        // in a pattern that ensures they don't play each other in round 1
+        
+        // If we have enough BYEs for half of the sub-bracket
+        if byesRemaining >= size / 2 {
+            // Create a mutable copy of byesRemaining
+            var remainingByes = byesRemaining
+            
+            // Fill every other position with BYEs
+            for i in stride(from: startIdx + 1, through: endIdx, by: 2) {
+                if remainingByes > 0 {
+                    isByePosition[i] = true
+                    remainingByes -= 1
+                }
+            }
+            
+            // Then distribute remaining BYEs in the other positions
+            for i in stride(from: startIdx, through: endIdx, by: 2) {
+                if remainingByes > 0 && !isByePosition[i] {
+                    isByePosition[i] = true
+                    remainingByes -= 1
+                }
+            }
+        } else {
+            // Not enough BYEs for half the bracket, so distribute evenly
+            let midIdx = startIdx + (size / 2)
+            
+            // Recursively distribute BYEs in the first half
+            let firstHalfByes = byesRemaining / 2
+            if firstHalfByes > 0 {
+                distributeByes(isByePosition: &isByePosition, 
+                              startIdx: startIdx, 
+                              endIdx: midIdx - 1, 
+                              byesRemaining: firstHalfByes, 
+                              bracketSize: bracketSize)
+            }
+            
+            // Recursively distribute BYEs in the second half
+            let secondHalfByes = byesRemaining - firstHalfByes
+            if secondHalfByes > 0 {
+                distributeByes(isByePosition: &isByePosition, 
+                              startIdx: midIdx, 
+                              endIdx: endIdx, 
+                              byesRemaining: secondHalfByes, 
+                              bracketSize: bracketSize)
+            }
         }
     }
     
