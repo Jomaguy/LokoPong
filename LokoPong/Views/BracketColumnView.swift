@@ -55,10 +55,18 @@ struct BracketColumnView_Previews: PreviewProvider {
     // Sample data for preview
     private static let previewBracket: Bracket = Bracket(name: "Semi Finals",
                                                          matches: [
-                                                            .init(team1: "Team 1", team2: "Team 2", team1Score: 2, team2Score: 1),
-                                                            .init(team1: "Team 3", team2: "Team 4", team1Score: 1, team2Score: 2),
-                                                            .init(team1: "Team 5", team2: "Team 6", team1Score: 1, team2Score: 2),
-                                                            .init(team1: "Team 7", team2: "Team 8", team1Score: 3, team2Score: 0),
+                                                            .init(team1: "Team 1", team2: "Team 2",
+                                                                  team1Players: ["Player 1A", "Player 1B"],
+                                                                  team2Players: ["Player 2A", "Player 2B"]),
+                                                            .init(team1: "Team 3", team2: "Team 4",
+                                                                  team1Players: ["Player 3A", "Player 3B"],
+                                                                  team2Players: ["Player 4A", "Player 4B"]),
+                                                            .init(team1: "Team 5", team2: "Team 6",
+                                                                  team1Players: ["Player 5A", "Player 5B"],
+                                                                  team2Players: ["Player 6A", "Player 6B"]),
+                                                            .init(team1: "Team 7", team2: "Team 8",
+                                                                  team1Players: ["Player 7A", "Player 7B"],
+                                                                  team2Players: ["Player 8A", "Player 8B"]),
                                                         ])
     
     static var previews: some View {

@@ -36,7 +36,10 @@ struct SelectedColumnIndicator: View {
             }
             
             // Automatically scroll when focused column changes
-            .onChange(of: focusedColumnIndex) { newIndex in scroll(to: newIndex, using: scrollProxy)}
+            .onChange(of: focusedColumnIndex) { newIndex in 
+                // Non-animated scrolling to prevent animation conflicts
+                scrollProxy.scrollTo(newIndex, anchor: .center)
+            }
         }
     }
 
@@ -62,18 +65,10 @@ struct SelectedColumnIndicator: View {
         }
     }
     
-    // Scroll to specific column with animation
-    private func scroll(to index: Int, using scrollProxy: ScrollViewProxy) {
-        withAnimation {
-            scrollProxy.scrollTo(index, anchor: .center)
-        }
-    }
-    
     // Handle round selection
     private func didTapColumnIndicator(at index: Int) {
-        withAnimation {
-            focusedColumnIndex = index
-        }
+        // Use parent view's animation instead of local animation
+        focusedColumnIndex = index
     }
 }
 

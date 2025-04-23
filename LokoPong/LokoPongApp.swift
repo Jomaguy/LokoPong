@@ -24,7 +24,7 @@ struct LokoPongApp: App {
                         Label("Register", systemImage: "pencil")
                     }
                 
-                TournamentDrawView(brackets: sampleBrackets)
+                TournamentDrawView(viewModel: TournamentDrawViewModel())
                     .tabItem {
                         Label("Draw", systemImage: "trophy")
                     }

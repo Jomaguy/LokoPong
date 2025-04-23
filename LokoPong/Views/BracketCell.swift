@@ -154,10 +154,14 @@ struct BracketCell: View {
     // First team score display
     private var team1ScoreArea: some View {
         HStack(spacing: 0) {
-            Text(matchData.team1)
+            // Show player names instead of team name
+            Text(matchData.team1Players.isEmpty ? 
+                 matchData.team1 : // Fallback to team name if no players
+                 matchData.team1Players.joined(separator: ", "))
+                .lineLimit(1)
+                .truncationMode(.tail)
+            
             Spacer()
-            Text("\(matchData.team1Score)")
-                .bold()
         }
         .padding(.horizontal)
         .frame(height: 20)
@@ -169,10 +173,14 @@ struct BracketCell: View {
     // Second team score display
     private var team2ScoreArea: some View {
         HStack(spacing: 0) {
-            Text(matchData.team2)
+            // Show player names instead of team name
+            Text(matchData.team2Players.isEmpty ? 
+                 matchData.team2 : // Fallback to team name if no players
+                 matchData.team2Players.joined(separator: ", "))
+                .lineLimit(1)
+                .truncationMode(.tail)
+            
             Spacer()
-            Text("\(matchData.team2Score)")
-                .bold()
         }
         .padding(.horizontal)
         .frame(height: 20)
@@ -195,7 +203,12 @@ struct BracketCell: View {
 
 // Preview provider for SwiftUI canvas
 struct BracketCell_Previews: PreviewProvider {
-    private static let previewMatchData = MatchData(team1: "Team 1", team2: "Team 2", team1Score: 2, team2Score: 1)
+    private static let previewMatchData = MatchData(
+        team1: "Team 1", 
+        team2: "Team 2", 
+        team1Players: ["Player 1A", "Player 1B"],
+        team2Players: ["Player 2A", "Player 2B"]
+    )
     
     static var previews: some View {
         BracketCell(matchData: previewMatchData,

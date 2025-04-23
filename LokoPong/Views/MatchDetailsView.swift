@@ -27,55 +27,72 @@ struct MatchDetailsView: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            teamNamesArea     // Team names display
-            teamScoresArea    // Score display
+            teamNamesArea      // Team names display
+            playerNamesArea    // Player names display
         }
     }
     
     // Team names display with VS separator
     private var teamNamesArea: some View {
         HStack(spacing: 40) {
-            // First team name with dynamic opacity based on score
+            // First team name
             Text(matchData.team1.uppercased())
                 .bold()
-                .opacity(matchData.team1Score > matchData.team2Score ? 1 : 0.3)
             
             // VS separator
             Text("vs")
                 .font(.system(size: 16))
             
-            // Second team name with dynamic opacity based on score
+            // Second team name
             Text(matchData.team2.uppercased())
                 .bold()
-                .opacity(matchData.team2Score > matchData.team1Score ? 1 : 0.3)
         }
         .font(.system(size: 32))
     }
     
-    // Score display with separator
-    private var teamScoresArea: some View {
+    // Player names display
+    private var playerNamesArea: some View {
         HStack(spacing: 20) {
-            // First team score with dynamic opacity
-            Text("\(matchData.team1Score)".uppercased())
-                .bold()
-                .opacity(matchData.team1Score > matchData.team2Score ? 1 : 0.3)
+            // First team players
+            VStack(alignment: .leading) {
+                ForEach(matchData.team1Players, id: \.self) { player in
+                    Text(player)
+                        .font(.system(size: 16))
+                }
+                if matchData.team1Players.isEmpty {
+                    Text("No players")
+                        .font(.system(size: 16))
+                        .italic()
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             
-            // Score separator
-            Text(":")
-                .font(.system(size: 16))
-            
-            // Second team score with dynamic opacity
-            Text("\(matchData.team2Score)".uppercased())
-                .bold()
-                .opacity(matchData.team2Score > matchData.team1Score ? 1 : 0.3)
+            // Second team players
+            VStack(alignment: .trailing) {
+                ForEach(matchData.team2Players, id: \.self) { player in
+                    Text(player)
+                        .font(.system(size: 16))
+                }
+                if matchData.team2Players.isEmpty {
+                    Text("No players")
+                        .font(.system(size: 16))
+                        .italic()
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .font(.system(size: 48))
+        .padding(.horizontal)
     }
 }
 
 // Preview provider for SwiftUI canvas
 struct MatchDetailsView_Previews: PreviewProvider {
     static var previews: some View {
-        MatchDetailsView(matchData: .init(team1: "Team 1", team2: "Team 2", team1Score: 3, team2Score: 0))
+        MatchDetailsView(matchData: .init(
+            team1: "Team 1", 
+            team2: "Team 2", 
+            team1Players: ["Player 1A", "Player 1B"],
+            team2Players: ["Player 2A", "Player 2B"]
+        ))
     }
 }

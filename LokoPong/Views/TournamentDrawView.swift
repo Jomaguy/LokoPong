@@ -19,7 +19,7 @@ import FirebaseFirestore
 struct TournamentDrawView: View {
     // Layout and data properties
     private let columnWidth: CGFloat = UIScreen.main.bounds.width * 0.9
-    let brackets: [Bracket] // Tournament rounds data
+    @ObservedObject var viewModel: TournamentDrawViewModel
     @State private var presentingMatchDetails: MatchData? // Selected match for detail view
     
     // Gesture and navigation state
@@ -28,6 +28,16 @@ struct TournamentDrawView: View {
     @State private var scrollOffset: CGFloat = 0 // Precise scroll position
     @State private var scrollVelocity: CGFloat = 0
     
+    // Initialize with a viewModel
+    init(viewModel: TournamentDrawViewModel) {
+        self.viewModel = viewModel
+    }
+    
+    // For backward compatibility with existing code/previews
+    init() {
+        self.viewModel = TournamentDrawViewModel()
+    }
+    
     // Calculate horizontal scroll offset based on focused column and drag
     private var offsetX: CGFloat {
         let screenCenter = (UIScreen.main.bounds.width - columnWidth) / 2
@@ -35,55 +45,65 @@ struct TournamentDrawView: View {
     }
     
     var body: some View {
-        ScrollViewReader { scrollViewProxy in
-            ScrollView(.vertical, showsIndicators: false) {
-                // Round selector at top of view
-                SelectedColumnIndicator(columnNames: brackets.map({ bracket in bracket.name }),
-                                      focusedColumnIndex: $focusedColumnIndex)
-                    .id("scroll-to-top-anchor")
-                
-                // Horizontally scrollable bracket view
-                ScrollView(.horizontal, showsIndicators: false) {
-                    columns
-                        .offset(x: offsetX)
+        VStack {
+            if viewModel.isLoading {
+                ProgressView("Loading tournament data...")
+            } else if let errorMessage = viewModel.errorMessage {
+                Text(errorMessage)
+                    .foregroundColor(.red)
+            } else {
+                ScrollViewReader { scrollViewProxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        // Round selector at top of view
+                        SelectedColumnIndicator(columnNames: viewModel.brackets.map({ bracket in bracket.name }),
+                                                focusedColumnIndex: $focusedColumnIndex)
+                        .id("scroll-to-top-anchor")
+                        
+                        // Horizontally scrollable bracket view
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            columns
+                                .offset(x: offsetX)
+                        }
+                        .frame(width: UIScreen.main.bounds.size.width)
+                        .scrollDisabled(true)
+                        .gesture(DragGesture(minimumDistance: 5, coordinateSpace: .global)
+                            .onChanged(updateCurrentOffsetX)
+                            .onEnded(handleDragEnded)
+                        )
+                    }
+                    
+                    // Match details modal presentation
+                    .sheet(item: $presentingMatchDetails, onDismiss: { presentingMatchDetails = nil }) { details in
+                        MatchDetailsView(matchData: details)
+                            .padding(.horizontal)
+                            .presentationDetents([.medium])
+                            .presentationDragIndicator(.visible)
+                    }
+                    
+                    // Coordinate all changes related to column changing in one place
+                    .onChange(of: focusedColumnIndex) { newValue in
+                        // Perform all related updates in a single animation
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            // 1. Update scroll offset
+                            scrollOffset = -CGFloat(newValue) * columnWidth
+                            
+                            // 2. Scroll to top
+                            scrollViewProxy.scrollTo("scroll-to-top-anchor", anchor: .top)
+                        }
+                    }
                 }
-                .frame(width: UIScreen.main.bounds.size.width)
-                .scrollDisabled(true)
-                .gesture(DragGesture(minimumDistance: 5, coordinateSpace: .global)
-                    .onChanged(updateCurrentOffsetX)
-                    .onEnded(handleDragEnded)
-                )
             }
-            
-            // Match details modal presentation
-            .sheet(item: $presentingMatchDetails, onDismiss: { presentingMatchDetails = nil }) { details in
-                MatchDetailsView(matchData: details)
-                    .padding(.horizontal)
-                    .presentationDetents([.medium])
-                    .presentationDragIndicator(.visible)
-            }
-            // Scroll to top when changing rounds
-            .onChange(of: focusedColumnIndex) { _ in
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    scrollViewProxy.scrollTo("scroll-to-top-anchor")
-                }
-            }
-            // Update scroll offset when focusedColumnIndex changes
-            .onChange(of: focusedColumnIndex) { newValue in
-                updateScrollOffset(newValue)
-            }
-            .onAppear {
-                // Set initial scroll offset
-                updateScrollOffset(focusedColumnIndex)
-            }
+        }
+        .onAppear {
+            viewModel.loadTournamentData()
         }
     }
     
     // Layout for all tournament rounds
     private var columns: some View {
         HStack(alignment: .top, spacing: 0) {
-            ForEach(0..<brackets.count, id: \.self) { columnIndex in
-                BracketColumnView(bracket: brackets[columnIndex],
+            ForEach(0..<viewModel.brackets.count, id: \.self) { columnIndex in
+                BracketColumnView(bracket: viewModel.brackets[columnIndex],
                                 columnIndex: columnIndex,
                                 focusedColumnIndex: focusedColumnIndex,
                                 lastColumnIndex: numberOfColumns - 1,
@@ -97,15 +117,7 @@ struct TournamentDrawView: View {
     
     // Total number of tournament rounds
     private var numberOfColumns: Int {
-        brackets.count
-    }
-    
-    // Update scroll offset based on focused column index
-    private func updateScrollOffset(_ columnIndex: Int) {
-        // Smoother animation for column changes
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            scrollOffset = -CGFloat(columnIndex) * columnWidth
-        }
+        viewModel.brackets.count
     }
     
     // Update drag gesture offset
@@ -127,17 +139,25 @@ struct TournamentDrawView: View {
         let isFirstColumn = focusedColumnIndex == 0
         let isLastColumn = focusedColumnIndex == numberOfColumns - 1
         
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            if didScrollEnough {
-                if isScrollingRight && !isLastColumn {
-                    focusedColumnIndex += 1
-                } else if !isScrollingRight && !isFirstColumn {
-                    focusedColumnIndex -= 1
-                }
+        // Determine new column index first
+        var newColumnIndex = focusedColumnIndex
+        if didScrollEnough {
+            if isScrollingRight && !isLastColumn {
+                newColumnIndex += 1
+            } else if !isScrollingRight && !isFirstColumn {
+                newColumnIndex -= 1
             }
-            
-            // Always reset drag offset when gesture ends
+        }
+        
+        // Apply changes in a single animation
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            // Reset drag offset
             dragOffsetX = 0
+            
+            // Update column index if needed
+            if newColumnIndex != focusedColumnIndex {
+                focusedColumnIndex = newColumnIndex
+            }
         }
     }
     
@@ -158,27 +178,57 @@ struct TournamentDrawView: View {
 // Sample data for development and preview
 let sampleBrackets: [Bracket] = [
     Bracket(name: "Eights", matches: [
-        MatchData(team1: "Team 1", team2: "Team 2", team1Score: 3, team2Score: 0),
-        MatchData(team1: "Team 3", team2: "Team 4", team1Score: 1, team2Score: 2),
-        MatchData(team1: "Team 5", team2: "Team 6", team1Score: 2, team2Score: 0),
-        MatchData(team1: "Team 7", team2: "Team 8", team1Score: 0, team2Score: 3),
-        MatchData(team1: "Team 9", team2: "Team 10", team1Score: 1, team2Score: 2),
-        MatchData(team1: "Team 11", team2: "Team 12", team1Score: 3, team2Score: 1),
-        MatchData(team1: "Team 13", team2: "Team 14", team1Score: 2, team2Score: 0),
-        MatchData(team1: "Team 15", team2: "Team 16", team1Score: 1, team2Score: 2)
+        MatchData(team1: "Team 1", team2: "Team 2",
+                 team1Players: ["Player 1A", "Player 1B"], 
+                 team2Players: ["Player 2A", "Player 2B"]),
+        MatchData(team1: "Team 3", team2: "Team 4",
+                 team1Players: ["Player 3A", "Player 3B"], 
+                 team2Players: ["Player 4A", "Player 4B"]),
+        MatchData(team1: "Team 5", team2: "Team 6",
+                 team1Players: ["Player 5A", "Player 5B"], 
+                 team2Players: ["Player 6A", "Player 6B"]),
+        MatchData(team1: "Team 7", team2: "Team 8",
+                 team1Players: ["Player 7A", "Player 7B"], 
+                 team2Players: ["Player 8A", "Player 8B"]),
+        MatchData(team1: "Team 9", team2: "Team 10",
+                 team1Players: ["Player 9A", "Player 9B"], 
+                 team2Players: ["Player 10A", "Player 10B"]),
+        MatchData(team1: "Team 11", team2: "Team 12",
+                 team1Players: ["Player 11A", "Player 11B"], 
+                 team2Players: ["Player 12A", "Player 12B"]),
+        MatchData(team1: "Team 13", team2: "Team 14",
+                 team1Players: ["Player 13A", "Player 13B"], 
+                 team2Players: ["Player 14A", "Player 14B"]),
+        MatchData(team1: "Team 15", team2: "Team 16",
+                 team1Players: ["Player 15A", "Player 15B"], 
+                 team2Players: ["Player 16A", "Player 16B"])
     ]),
     Bracket(name: "Quarter Finals", matches: [
-        MatchData(team1: "Team 1", team2: "Team 4", team1Score: 3, team2Score: 0),
-        MatchData(team1: "Team 5", team2: "Team 8", team1Score: 1, team2Score: 2),
-        MatchData(team1: "Team 10", team2: "Team 11", team1Score: 2, team2Score: 0),
-        MatchData(team1: "Team 13", team2: "Team 16", team1Score: 0, team2Score: 3),
+        MatchData(team1: "Team 1", team2: "Team 4",
+                 team1Players: ["Player 1A", "Player 1B"], 
+                 team2Players: ["Player 4A", "Player 4B"]),
+        MatchData(team1: "Team 5", team2: "Team 8",
+                 team1Players: ["Player 5A", "Player 5B"], 
+                 team2Players: ["Player 8A", "Player 8B"]),
+        MatchData(team1: "Team 10", team2: "Team 11",
+                 team1Players: ["Player 10A", "Player 10B"], 
+                 team2Players: ["Player 11A", "Player 11B"]),
+        MatchData(team1: "Team 13", team2: "Team 16",
+                 team1Players: ["Player 13A", "Player 13B"], 
+                 team2Players: ["Player 16A", "Player 16B"]),
     ]),
     Bracket(name: "Semi Finals", matches: [
-        MatchData(team1: "Team 1", team2: "Team 8", team1Score: 3, team2Score: 0),
-        MatchData(team1: "Team 10", team2: "Team 16", team1Score: 1, team2Score: 2),
+        MatchData(team1: "Team 1", team2: "Team 8",
+                 team1Players: ["Player 1A", "Player 1B"], 
+                 team2Players: ["Player 8A", "Player 8B"]),
+        MatchData(team1: "Team 10", team2: "Team 16",
+                 team1Players: ["Player 10A", "Player 10B"], 
+                 team2Players: ["Player 16A", "Player 16B"]),
     ]),
     Bracket(name: "Grand Finals", matches: [
-        MatchData(team1: "Team 1", team2: "Team 16", team1Score: 1, team2Score: 2)
+        MatchData(team1: "Team 1", team2: "Team 16",
+                 team1Players: ["Player 1A", "Player 1B"], 
+                 team2Players: ["Player 16A", "Player 16B"])
     ])
 ]
 
@@ -187,6 +237,6 @@ struct ContentView_Previews: PreviewProvider {
     @State static private var brackets: [Bracket] = sampleBrackets
     
     static var previews: some View {
-        TournamentDrawView(brackets: brackets)
+        TournamentDrawView(viewModel: TournamentDrawViewModel(brackets: brackets))
     }
 }

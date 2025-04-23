@@ -2,7 +2,7 @@ import Foundation
 import FirebaseFirestore
 
 class TournamentManager: ObservableObject {
-    @Published var teams: [Team] = []
+    @Published var teams: [TeamData] = []
     private let db = Firestore.firestore()
     
     init() {
@@ -26,29 +26,15 @@ class TournamentManager: ObservableObject {
             
             print("✅ Successfully loaded \(documents.count) teams")
             
-            let loadedTeams = documents.compactMap { document -> Team? in
+            let loadedTeams = documents.compactMap { document -> TeamData? in
                 let data = document.data()
                 
-                guard let name = data["name"] as? String,
-                      let player1Name = data["player1Name"] as? String,
-                      let player2Name = data["player2Name"] as? String,
-                      let contact1 = data["contact1"] as? String,
-                      let contact2 = data["contact2"] as? String,
-                      let registrationDate = data["registrationDate"] as? Timestamp,
-                      let isApproved = data["isApproved"] as? Bool else {
+                guard let name = data["name"] as? String else {
                     print("⚠️ Could not parse team data for document \(document.documentID)")
                     return nil
                 }
                 
-                return Team(
-                    name: name,
-                    player1Name: player1Name,
-                    player2Name: player2Name,
-                    contact1: contact1,
-                    contact2: contact2,
-                    registrationDate: registrationDate.dateValue(),
-                    isApproved: isApproved
-                )
+                return TeamData(id: document.documentID, name: name)
             }
             
             DispatchQueue.main.async {
@@ -83,13 +69,14 @@ class TournamentManager: ObservableObject {
         
         print("💾 Attempting to save to Firebase:", teamData)
         
-        db.collection("teams").addDocument(data: teamData) { error in
+        db.collection("teams").addDocument(data: teamData) { [weak self] error in
             if let error = error {
                 print("❌ Error adding team to Firebase:", error.localizedDescription)
             } else {
                 print("✅ Team successfully added to Firebase")
                 DispatchQueue.main.async {
-                    self.teams.append(team)
+                    let teamData = TeamData(id: UUID().uuidString, name: team.name)
+                    self?.teams.append(teamData)
                 }
             }
         }
