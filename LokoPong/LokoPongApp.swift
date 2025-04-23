@@ -29,6 +29,11 @@ struct LokoPongApp: App {
                         Label("Draw", systemImage: "trophy")
                     }
                 
+                EntryListView()
+                    .tabItem {
+                        Label("Entry List", systemImage: "list.bullet")
+                    }
+                
                 RulesView()
                     .tabItem {
                         Label("Rules", systemImage: "book")
