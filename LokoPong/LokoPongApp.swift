@@ -6,12 +6,30 @@
 //
 
 import SwiftUI
+import FirebaseCore
 
 @main
 struct LokoPongApp: App {
+    @StateObject private var tournamentManager = TournamentManager()
+    
+    init() {
+        FirebaseApp.configure()
+    }
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TabView {
+                TeamRegistrationView()
+                    .tabItem {
+                        Label("Register", systemImage: "pencil")
+                    }
+                
+                TournamentDrawView(brackets: sampleBrackets)
+                    .tabItem {
+                        Label("Draw", systemImage: "trophy")
+                    }
+            }
+            .environmentObject(tournamentManager)
         }
     }
 }

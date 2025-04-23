@@ -6,6 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		47156CE42DB8305C001EAAC0 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 47156CE32DB8305C001EAAC0 /* GoogleService-Info.plist */; };
+		47156CE72DB8311C001EAAC0 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 47156CE62DB8311C001EAAC0 /* FirebaseAnalytics */; };
+		47156CE92DB8311C001EAAC0 /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 47156CE82DB8311C001EAAC0 /* FirebaseAnalyticsWithoutAdIdSupport */; };
+		47156CEB2DB83278001EAAC0 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 47156CEA2DB83278001EAAC0 /* FirebaseCore */; };
+		47156CED2DB83278001EAAC0 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 47156CEC2DB83278001EAAC0 /* FirebaseFirestore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		47156CB22DB8260A001EAAC0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +35,7 @@
 		47156CA42DB82606001EAAC0 /* LokoPong.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LokoPong.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		47156CB12DB8260A001EAAC0 /* LokoPongTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LokoPongTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		47156CBB2DB8260A001EAAC0 /* LokoPongUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LokoPongUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		47156CE32DB8305C001EAAC0 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +61,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				47156CE72DB8311C001EAAC0 /* FirebaseAnalytics in Frameworks */,
+				47156CED2DB83278001EAAC0 /* FirebaseFirestore in Frameworks */,
+				47156CEB2DB83278001EAAC0 /* FirebaseCore in Frameworks */,
+				47156CE92DB8311C001EAAC0 /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,6 +92,7 @@
 				47156CB42DB8260A001EAAC0 /* LokoPongTests */,
 				47156CBE2DB8260A001EAAC0 /* LokoPongUITests */,
 				47156CA52DB82606001EAAC0 /* Products */,
+				47156CE32DB8305C001EAAC0 /* GoogleService-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -112,6 +126,10 @@
 			);
 			name = LokoPong;
 			packageProductDependencies = (
+				47156CE62DB8311C001EAAC0 /* FirebaseAnalytics */,
+				47156CE82DB8311C001EAAC0 /* FirebaseAnalyticsWithoutAdIdSupport */,
+				47156CEA2DB83278001EAAC0 /* FirebaseCore */,
+				47156CEC2DB83278001EAAC0 /* FirebaseFirestore */,
 			);
 			productName = LokoPong;
 			productReference = 47156CA42DB82606001EAAC0 /* LokoPong.app */;
@@ -195,6 +213,9 @@
 			);
 			mainGroup = 47156C9B2DB82606001EAAC0;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				47156CE52DB8311C001EAAC0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 47156CA52DB82606001EAAC0 /* Products */;
 			projectDirPath = "";
@@ -212,6 +233,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				47156CE42DB8305C001EAAC0 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -405,6 +427,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -433,6 +456,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -558,6 +582,40 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		47156CE52DB8311C001EAAC0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.12.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		47156CE62DB8311C001EAAC0 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 47156CE52DB8311C001EAAC0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		47156CE82DB8311C001EAAC0 /* FirebaseAnalyticsWithoutAdIdSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 47156CE52DB8311C001EAAC0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsWithoutAdIdSupport;
+		};
+		47156CEA2DB83278001EAAC0 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 47156CE52DB8311C001EAAC0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		47156CEC2DB83278001EAAC0 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 47156CE52DB8311C001EAAC0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 47156C9C2DB82606001EAAC0 /* Project object */;
 }
