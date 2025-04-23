@@ -6,8 +6,56 @@ class TournamentManager: ObservableObject {
     private let db = Firestore.firestore()
     
     init() {
+        loadTeams()
     }
     
+    // Function to load all teams from Firestore
+    func loadTeams() {
+        print("📥 Loading teams from Firebase...")
+        
+        db.collection("teams").getDocuments { [weak self] snapshot, error in
+            if let error = error {
+                print("❌ Error loading teams: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let documents = snapshot?.documents else {
+                print("⚠️ No team documents found")
+                return
+            }
+            
+            print("✅ Successfully loaded \(documents.count) teams")
+            
+            let loadedTeams = documents.compactMap { document -> Team? in
+                let data = document.data()
+                
+                guard let name = data["name"] as? String,
+                      let player1Name = data["player1Name"] as? String,
+                      let player2Name = data["player2Name"] as? String,
+                      let contact1 = data["contact1"] as? String,
+                      let contact2 = data["contact2"] as? String,
+                      let registrationDate = data["registrationDate"] as? Timestamp,
+                      let isApproved = data["isApproved"] as? Bool else {
+                    print("⚠️ Could not parse team data for document \(document.documentID)")
+                    return nil
+                }
+                
+                return Team(
+                    name: name,
+                    player1Name: player1Name,
+                    player2Name: player2Name,
+                    contact1: contact1,
+                    contact2: contact2,
+                    registrationDate: registrationDate.dateValue(),
+                    isApproved: isApproved
+                )
+            }
+            
+            DispatchQueue.main.async {
+                self?.teams = loadedTeams
+            }
+        }
+    }
     
     func addTeam(name: String, player1: String, player2: String, phone1: String, phone2: String) {
         print("📝 Starting team registration process...")

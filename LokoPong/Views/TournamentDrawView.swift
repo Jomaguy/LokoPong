@@ -26,6 +26,7 @@ struct TournamentDrawView: View {
     @State private var dragOffsetX: CGFloat = 0 // Current drag gesture offset
     @State private var focusedColumnIndex: Int = 0 // Currently focused round
     @State private var scrollOffset: CGFloat = 0 // Precise scroll position
+    @State private var scrollVelocity: CGFloat = 0
     
     // Calculate horizontal scroll offset based on focused column and drag
     private var offsetX: CGFloat {
@@ -48,7 +49,7 @@ struct TournamentDrawView: View {
                 }
                 .frame(width: UIScreen.main.bounds.size.width)
                 .scrollDisabled(true)
-                .gesture(DragGesture(minimumDistance: 12, coordinateSpace: .global)
+                .gesture(DragGesture(minimumDistance: 5, coordinateSpace: .global)
                     .onChanged(updateCurrentOffsetX)
                     .onEnded(handleDragEnded)
                 )
@@ -63,7 +64,7 @@ struct TournamentDrawView: View {
             }
             // Scroll to top when changing rounds
             .onChange(of: focusedColumnIndex) { _ in
-                withAnimation {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     scrollViewProxy.scrollTo("scroll-to-top-anchor")
                 }
             }
@@ -101,24 +102,32 @@ struct TournamentDrawView: View {
     
     // Update scroll offset based on focused column index
     private func updateScrollOffset(_ columnIndex: Int) {
-        withAnimation(.easeInOut) {
+        // Smoother animation for column changes
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
             scrollOffset = -CGFloat(columnIndex) * columnWidth
         }
     }
     
     // Update drag gesture offset
     private func updateCurrentOffsetX(_ dragGestureValue: DragGesture.Value) {
-        dragOffsetX = dragGestureValue.translation.width
+        let newOffset = dragGestureValue.translation.width
+        scrollVelocity = newOffset - dragOffsetX
+        dragOffsetX = newOffset
     }
     
     // Handle end of drag gesture
     private func handleDragEnded(_ gestureValue: DragGesture.Value) {
+        let velocityX = gestureValue.predictedEndLocation.x - gestureValue.location.x
         let isScrollingRight = gestureValue.translation.width < 0
-        let didScrollEnough = abs(gestureValue.translation.width) > columnWidth * 0.3
+        
+        // Consider both distance and velocity for more natural feel
+        let didScrollEnough = abs(gestureValue.translation.width) > columnWidth * 0.2 || 
+                            abs(velocityX) > 10
+        
         let isFirstColumn = focusedColumnIndex == 0
         let isLastColumn = focusedColumnIndex == numberOfColumns - 1
         
-        withAnimation(.easeInOut) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
             if didScrollEnough {
                 if isScrollingRight && !isLastColumn {
                     focusedColumnIndex += 1
@@ -126,6 +135,7 @@ struct TournamentDrawView: View {
                     focusedColumnIndex -= 1
                 }
             }
+            
             // Always reset drag offset when gesture ends
             dragOffsetX = 0
         }
