@@ -28,6 +28,11 @@ struct LokoPongApp: App {
                     .tabItem {
                         Label("Draw", systemImage: "trophy")
                     }
+                
+                RulesView()
+                    .tabItem {
+                        Label("Rules", systemImage: "book")
+                    }
             }
             .environmentObject(tournamentManager)
         }
