@@ -175,68 +175,23 @@ struct TournamentDrawView: View {
     }
 }
 
-// Sample data for development and preview
-let sampleBrackets: [Bracket] = [
-    Bracket(name: "Eights", matches: [
-        MatchData(team1: "Team 1", team2: "Team 2",
-                 team1Players: ["Player 1A", "Player 1B"], 
-                 team2Players: ["Player 2A", "Player 2B"]),
-        MatchData(team1: "Team 3", team2: "Team 4",
-                 team1Players: ["Player 3A", "Player 3B"], 
-                 team2Players: ["Player 4A", "Player 4B"]),
-        MatchData(team1: "Team 5", team2: "Team 6",
-                 team1Players: ["Player 5A", "Player 5B"], 
-                 team2Players: ["Player 6A", "Player 6B"]),
-        MatchData(team1: "Team 7", team2: "Team 8",
-                 team1Players: ["Player 7A", "Player 7B"], 
-                 team2Players: ["Player 8A", "Player 8B"]),
-        MatchData(team1: "Team 9", team2: "Team 10",
-                 team1Players: ["Player 9A", "Player 9B"], 
-                 team2Players: ["Player 10A", "Player 10B"]),
-        MatchData(team1: "Team 11", team2: "Team 12",
-                 team1Players: ["Player 11A", "Player 11B"], 
-                 team2Players: ["Player 12A", "Player 12B"]),
-        MatchData(team1: "Team 13", team2: "Team 14",
-                 team1Players: ["Player 13A", "Player 13B"], 
-                 team2Players: ["Player 14A", "Player 14B"]),
-        MatchData(team1: "Team 15", team2: "Team 16",
-                 team1Players: ["Player 15A", "Player 15B"], 
-                 team2Players: ["Player 16A", "Player 16B"])
-    ]),
-    Bracket(name: "Quarter Finals", matches: [
-        MatchData(team1: "Team 1", team2: "Team 4",
-                 team1Players: ["Player 1A", "Player 1B"], 
-                 team2Players: ["Player 4A", "Player 4B"]),
-        MatchData(team1: "Team 5", team2: "Team 8",
-                 team1Players: ["Player 5A", "Player 5B"], 
-                 team2Players: ["Player 8A", "Player 8B"]),
-        MatchData(team1: "Team 10", team2: "Team 11",
-                 team1Players: ["Player 10A", "Player 10B"], 
-                 team2Players: ["Player 11A", "Player 11B"]),
-        MatchData(team1: "Team 13", team2: "Team 16",
-                 team1Players: ["Player 13A", "Player 13B"], 
-                 team2Players: ["Player 16A", "Player 16B"]),
-    ]),
-    Bracket(name: "Semi Finals", matches: [
-        MatchData(team1: "Team 1", team2: "Team 8",
-                 team1Players: ["Player 1A", "Player 1B"], 
-                 team2Players: ["Player 8A", "Player 8B"]),
-        MatchData(team1: "Team 10", team2: "Team 16",
-                 team1Players: ["Player 10A", "Player 10B"], 
-                 team2Players: ["Player 16A", "Player 16B"]),
-    ]),
-    Bracket(name: "Grand Finals", matches: [
-        MatchData(team1: "Team 1", team2: "Team 16",
-                 team1Players: ["Player 1A", "Player 1B"], 
-                 team2Players: ["Player 16A", "Player 16B"])
-    ])
-]
-
 // Preview provider for SwiftUI canvas
 struct ContentView_Previews: PreviewProvider {
-    @State static private var brackets: [Bracket] = sampleBrackets
-    
     static var previews: some View {
-        TournamentDrawView(viewModel: TournamentDrawViewModel(brackets: brackets))
+        // Create minimal sample data for preview
+        let previewBrackets: [Bracket] = [
+            Bracket(name: "Eights", matches: [
+                MatchData(team1: "Team 1", team2: "Team 2",
+                         team1Players: ["Player 1A"], team2Players: ["Player 2A"]),
+                MatchData(team1: "Team 3", team2: "Team 4",
+                         team1Players: ["Player 3A"], team2Players: ["Player 4A"])
+            ]),
+            Bracket(name: "Semi Finals", matches: [
+                MatchData(team1: "Team 1", team2: "Team 4",
+                         team1Players: ["Player 1A"], team2Players: ["Player 4A"])
+            ])
+        ]
+        
+        return TournamentDrawView(viewModel: TournamentDrawViewModel(brackets: previewBrackets))
     }
 }
