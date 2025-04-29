@@ -38,6 +38,11 @@ struct LokoPongApp: App {
                     .tabItem {
                         Label("Rules", systemImage: "book")
                     }
+                
+                AdminView()
+                    .tabItem {
+                        Label("Admin", systemImage: "lock.shield")
+                    }
             }
             .environmentObject(tournamentManager)
             .preferredColorScheme(.light)
