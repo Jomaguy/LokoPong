@@ -40,6 +40,7 @@ struct LokoPongApp: App {
                     }
             }
             .environmentObject(tournamentManager)
+            .preferredColorScheme(.light)
         }
     }
 }

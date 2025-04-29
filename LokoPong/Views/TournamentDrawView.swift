@@ -73,8 +73,8 @@ struct TournamentDrawView: View {
                     
                     // Coordinate all changes related to column changing in one place
                     .onChange(of: focusedColumnIndex) { newValue in
-                        // Perform all related updates in a single animation
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        // Use easeInOut animation instead of spring for more stable timing
+                        withAnimation(.easeInOut(duration: 0.3)) {
                             // 1. Update scroll offset
                             scrollOffset = -CGFloat(newValue) * columnWidth
                             
@@ -138,8 +138,8 @@ struct TournamentDrawView: View {
             }
         }
         
-        // Apply changes in a single animation
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        // Apply changes with easeInOut animation
+        withAnimation(.easeInOut(duration: 0.3)) {
             // Reset drag offset
             dragOffsetX = 0
             
