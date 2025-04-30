@@ -15,6 +15,7 @@ import FirebaseFirestore
  * - Automatic scrolling to top when changing rounds
  * - Responsive layout based on screen size
  * - Only displays approved teams in the tournament (approved by admin)
+ * - Future rounds display TBD until winners are determined
  */
 
 struct TournamentDrawView: View {
@@ -185,6 +186,64 @@ struct TournamentDrawView: View {
     }
 }
 
+// MatchView - Displays a single match with TBD support
+struct MatchView: View {
+    let match: MatchData
+    let isFirstRound: Bool
+    let isTBD: Bool
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            // Team 1
+            teamRow(name: match.team1, players: match.team1Players, score: match.team1Score)
+            
+            // Divider
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(.gray.opacity(0.3))
+            
+            // Team 2
+            teamRow(name: match.team2, players: match.team2Players, score: match.team2Score)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+                .opacity(isTBD ? 0.5 : 1.0)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
+        .opacity(isTBD ? 0.7 : 1.0)
+    }
+    
+    private func teamRow(name: String, players: [String], score: Int) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name)
+                    .font(.system(size: 14, weight: name == "TBD" ? .regular : .bold))
+                    .foregroundColor(name == "TBD" ? .gray : .primary)
+                
+                if !players.isEmpty && name != "TBD" {
+                    Text(players.joined(separator: ", "))
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            
+            Spacer()
+            
+            // Show score only for non-TBD matches
+            if !isTBD {
+                Text("\(score)")
+                    .font(.system(size: 16, weight: .bold))
+            }
+        }
+    }
+}
+
 // Preview provider for SwiftUI canvas
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
@@ -192,13 +251,16 @@ struct ContentView_Previews: PreviewProvider {
         let previewBrackets: [Bracket] = [
             Bracket(name: "Eights", matches: [
                 MatchData(team1: "Team 1", team2: "Team 2",
-                         team1Players: ["Player 1A"], team2Players: ["Player 2A"]),
+                         team1Players: ["Player 1A"], team2Players: ["Player 2A"],
+                         uniqueId: "match1"),
                 MatchData(team1: "Team 3", team2: "Team 4",
-                         team1Players: ["Player 3A"], team2Players: ["Player 4A"])
+                         team1Players: ["Player 3A"], team2Players: ["Player 4A"],
+                         uniqueId: "match2")
             ]),
             Bracket(name: "Semi Finals", matches: [
                 MatchData(team1: "Team 1", team2: "Team 4",
-                         team1Players: ["Player 1A"], team2Players: ["Player 4A"])
+                         team1Players: ["Player 1A"], team2Players: ["Player 4A"],
+                         uniqueId: "match3")
             ])
         ]
         

@@ -24,9 +24,20 @@ struct MatchData: Identifiable {
     let team1Players: [String]
     let team2Players: [String]
     
+    // Unique identifier for each match (automatically generated)
+    let uniqueId: String
+    
     // Unique identifier for each match
     var id: String {
-        team1 + team2
+        uniqueId
+    }
+    
+    init(team1: String, team2: String, team1Players: [String], team2Players: [String], uniqueId: String = UUID().uuidString) {
+        self.team1 = team1
+        self.team2 = team2
+        self.team1Players = team1Players
+        self.team2Players = team2Players
+        self.uniqueId = uniqueId
     }
 }
 
@@ -131,54 +142,42 @@ class TournamentDrawViewModel: ObservableObject {
             return
         }
         
-        // For larger brackets, generate rounds dynamically
-        var roundTeams = tournamentTeams
-        var currentRoundSize = bracketSize
-        
         // Calculate the number of rounds (log base 2 of bracketSize)
         let numberOfRounds = Int(log2(Double(bracketSize)))
         
-        // Generate each round, starting from the first round
+        // Generate each round
         for round in 0..<numberOfRounds {
-            let isLastRound = round == numberOfRounds - 1
             let roundName = getRoundName(roundIndex: round, totalRounds: numberOfRounds)
             
-            // Create matches for this round
-            var roundMatches: [MatchData] = []
-            let matchesInRound = currentRoundSize / 2
-            
-            for i in 0..<matchesInRound {
-                let team1Index = i * 2
-                let team2Index = i * 2 + 1
+            // Only create actual matches for the first round
+            if round == 0 {
+                // First round - create matches with actual teams
+                var roundMatches: [MatchData] = []
+                let matchesInRound = bracketSize / 2
                 
-                if team1Index < roundTeams.count && team2Index < roundTeams.count {
-                    roundMatches.append(createMatch(team1: roundTeams[team1Index], team2: roundTeams[team2Index]))
+                for i in 0..<matchesInRound {
+                    let team1Index = i * 2
+                    let team2Index = i * 2 + 1
+                    
+                    if team1Index < tournamentTeams.count && team2Index < tournamentTeams.count {
+                        roundMatches.append(createMatch(team1: tournamentTeams[team1Index], team2: tournamentTeams[team2Index]))
+                    }
                 }
-            }
-            
-            // Add this round's bracket to all brackets
-            allBrackets.append(Bracket(name: roundName, matches: roundMatches))
-            
-            // If this is the last round, we're done
-            if isLastRound {
-                break
-            }
-            
-            // Determine winners for the next round
-            var nextRoundTeams: [TeamData] = []
-            for i in 0..<matchesInRound {
-                let team1Index = i * 2
-                let team2Index = i * 2 + 1
                 
-                if team1Index < roundTeams.count && team2Index < roundTeams.count {
-                    let winner = getWinner(team1: roundTeams[team1Index], team2: roundTeams[team2Index])
-                    nextRoundTeams.append(winner)
+                // Add this round's bracket to all brackets
+                allBrackets.append(Bracket(name: roundName, matches: roundMatches))
+            } else {
+                // Subsequent rounds - create empty brackets with placeholder matches
+                // The number of matches in this round is half the number in the previous round
+                let matchesInRound = bracketSize / Int(pow(2.0, Double(round + 1)))
+                
+                // Create empty placeholder matches for this round
+                let emptyMatches = (0..<matchesInRound).map { _ in
+                    return createEmptyMatch()
                 }
+                
+                allBrackets.append(Bracket(name: roundName, matches: emptyMatches))
             }
-            
-            // Update for next round
-            roundTeams = nextRoundTeams
-            currentRoundSize = currentRoundSize / 2
         }
         
         // Update the UI on the main thread
@@ -351,39 +350,19 @@ class TournamentDrawViewModel: ObservableObject {
             team1: team1.name, 
             team2: team2.name,
             team1Players: team1.players,
-            team2Players: team2.players
+            team2Players: team2.players,
+            uniqueId: UUID().uuidString
         )
     }
     
-    // Helper method to determine which team advances to the next round
-    private func getWinner(team1: TeamData, team2: TeamData) -> TeamData {
-        // If team1 is BYE, team2 advances
-        if team1.name == "BYE" {
-            return team2
-        }
-        // If team2 is BYE, team1 advances
-        else if team2.name == "BYE" {
-            return team1
-        }
-        // If neither is BYE, use random selection (in real app would use match results)
-        else {
-            return Bool.random() ? team1 : team2
-        }
-    }
-    
-    // Helper method to determine match scores when BYE teams are involved
-    private func calculateScores(team1: TeamData, team2: TeamData) -> (Int, Int) {
-        if team1.name == "BYE" && team2.name == "BYE" {
-            return (0, 0) // Both BYE
-        } else if team1.name == "BYE" {
-            return (0, 3) // Team 2 wins by default
-        } else if team2.name == "BYE" {
-            return (3, 0) // Team 1 wins by default
-        } else {
-            // Randomly determine a winner for actual teams (could be replaced with real scores)
-            let team1Score = Int.random(in: 0...3)
-            let team2Score = team1Score >= 3 ? Int.random(in: 0...2) : 3
-            return (team1Score, team2Score)
-        }
+    // Helper method to create an empty match for future rounds
+    private func createEmptyMatch() -> MatchData {
+        return MatchData(
+            team1: "TBD", 
+            team2: "TBD",
+            team1Players: [],
+            team2Players: [],
+            uniqueId: UUID().uuidString
+        )
     }
 }
