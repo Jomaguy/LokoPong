@@ -346,10 +346,12 @@ struct AdminDashboardView: View {
                 }
                 
                 Section(header: Text("Tournament Control")) {
-                    HStack {
-                        Image(systemName: "trophy")
-                            .foregroundColor(.orange)
-                        Text("Update Match Results")
+                    NavigationLink(destination: AdminMatchUpdateView()) {
+                        HStack {
+                            Image(systemName: "trophy")
+                                .foregroundColor(.orange)
+                            Text("Update Match Results")
+                        }
                     }
                 }
                 

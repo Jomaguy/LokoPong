@@ -2,6 +2,7 @@ import Foundation
 import FirebaseFirestore
 import SwiftUI
 import Combine
+import Firebase
 
 /**
  * TournamentDrawViewModel
@@ -24,6 +25,9 @@ struct MatchData: Identifiable {
     let team1Players: [String]
     let team2Players: [String]
     
+    // Winner of the match (either team1 or team2 name, or empty if not yet decided)
+    var winner: String = ""
+    
     // Unique identifier for each match (automatically generated)
     let uniqueId: String
     
@@ -32,27 +36,37 @@ struct MatchData: Identifiable {
         uniqueId
     }
     
-    init(team1: String, team2: String, team1Players: [String], team2Players: [String], uniqueId: String = UUID().uuidString) {
+    init(team1: String, team2: String, team1Players: [String], team2Players: [String], winner: String = "", uniqueId: String = UUID().uuidString) {
         self.team1 = team1
         self.team2 = team2
         self.team1Players = team1Players
         self.team2Players = team2Players
+        self.winner = winner
         self.uniqueId = uniqueId
     }
 }
 
 // Represents a round in the tournament (e.g., "Quarter Finals")
-struct Bracket {
+struct Bracket: Identifiable {
+    let id: String
     let name: String        // Name of the round (e.g., "First Round", "Semi Finals")
     let matches: [MatchData] // Array of matches in this round
+    
+    init(id: String = UUID().uuidString, name: String, matches: [MatchData]) {
+        self.id = id
+        self.name = name
+        self.matches = matches
+    }
 }
 
 class TournamentDrawViewModel: ObservableObject {
     @Published var brackets: [Bracket] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var currentTournamentID: String?
     
     private let teamService = TeamService()
+    private var tournamentListeners: [ListenerRegistration] = []
     
     // Default initializer
     init() {}
@@ -60,6 +74,11 @@ class TournamentDrawViewModel: ObservableObject {
     // Initializer with predefined brackets for testing/preview
     init(brackets: [Bracket]) {
         self.brackets = brackets
+    }
+    
+    deinit {
+        // Remove all listeners when the view model is deallocated
+        removeAllListeners()
     }
     
     func loadTournamentData() {
@@ -114,6 +133,165 @@ class TournamentDrawViewModel: ObservableObject {
         }
     }
     
+    // Function to load tournament data from Firestore
+    func loadTournamentFromFirestore() {
+        isLoading = true
+        errorMessage = nil
+        
+        // Remove any existing listeners
+        removeAllListeners()
+        
+        // Try to get the current tournament ID
+        guard let tournamentID = currentTournamentID ?? UserDefaults.standard.string(forKey: "currentTournamentID") else {
+            // No tournament found, we need to create one
+            loadTournamentData() // This will generate and save to Firestore
+            return
+        }
+        
+        let db = Firestore.firestore()
+        let tournamentRef = db.collection("tournaments").document(tournamentID)
+        
+        // Check if tournament exists
+        tournamentRef.getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                self.errorMessage = "Error loading tournament: \(error.localizedDescription)"
+                self.isLoading = false
+                return
+            }
+            
+            guard let snapshot = snapshot, snapshot.exists else {
+                print("⚠️ Tournament not found, creating a new one")
+                self.loadTournamentData() // This will generate and save to Firestore
+                return
+            }
+            
+            // Tournament exists, set up real-time listeners
+            self.setupTournamentListeners(tournamentID: tournamentID)
+        }
+    }
+    
+    // Setup real-time listeners for tournament updates
+    private func setupTournamentListeners(tournamentID: String) {
+        let db = Firestore.firestore()
+        let tournamentRef = db.collection("tournaments").document(tournamentID)
+        
+        // Listen for bracket changes
+        let bracketsListener = tournamentRef.collection("brackets").order(by: "roundIndex")
+            .addSnapshotListener { [weak self] (snapshot, error) in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    self.errorMessage = "Error listening for bracket updates: \(error.localizedDescription)"
+                    return
+                }
+                
+                guard let documents = snapshot?.documents else {
+                    print("No brackets found")
+                    return
+                }
+                
+                // Process bracket documents
+                self.processBracketDocuments(documents, tournamentID: tournamentID)
+            }
+        
+        // Store the listener for later removal
+        tournamentListeners.append(bracketsListener)
+    }
+    
+    // Process bracket documents and set up match listeners
+    private func processBracketDocuments(_ documents: [QueryDocumentSnapshot], tournamentID: String) {
+        let db = Firestore.firestore()
+        let tournamentRef = db.collection("tournaments").document(tournamentID)
+        
+        var loadedBrackets: [Bracket] = []
+        let group = DispatchGroup()
+        
+        // Process each bracket
+        for bracketDoc in documents {
+            group.enter()
+            
+            let bracketData = bracketDoc.data()
+            let bracketName = bracketData["name"] as? String ?? "Unknown Round"
+            let bracketId = bracketDoc.documentID
+            
+            // Set up listener for matches in this bracket
+            let matchesListener = bracketDoc.reference.collection("matches")
+                .addSnapshotListener { [weak self] (matchesSnapshot, matchError) in
+                    guard let self = self else { return }
+                    
+                    if let matchError = matchError {
+                        print("❌ Error listening for match updates: \(matchError.localizedDescription)")
+                        return
+                    }
+                    
+                    var matches: [MatchData] = []
+                    
+                    // Process each match
+                    for matchDoc in matchesSnapshot?.documents ?? [] {
+                        let matchData = matchDoc.data()
+                        
+                        let match = MatchData(
+                            team1: matchData["team1"] as? String ?? "Unknown",
+                            team2: matchData["team2"] as? String ?? "Unknown",
+                            team1Players: matchData["team1Players"] as? [String] ?? [],
+                            team2Players: matchData["team2Players"] as? [String] ?? [],
+                            winner: matchData["winner"] as? String ?? "",
+                            uniqueId: matchDoc.documentID
+                        )
+                        
+                        matches.append(match)
+                    }
+                    
+                    // Update or create bracket with the latest matches
+                    let updatedBracket = Bracket(
+                        id: bracketId,
+                        name: bracketName,
+                        matches: matches
+                    )
+                    
+                    // Update brackets array on main thread
+                    DispatchQueue.main.async {
+                        if let existingIndex = self.brackets.firstIndex(where: { $0.id == bracketId }) {
+                            // Update existing bracket
+                            self.brackets[existingIndex] = updatedBracket
+                        } else {
+                            // Add new bracket
+                            self.brackets.append(updatedBracket)
+                            
+                            // Sort brackets by roundIndex
+                            self.brackets.sort { bracket1, bracket2 in
+                                guard let index1 = documents.firstIndex(where: { $0.documentID == bracket1.id }),
+                                      let index2 = documents.firstIndex(where: { $0.documentID == bracket2.id }) else {
+                                    return false
+                                }
+                                return index1 < index2
+                            }
+                        }
+                    }
+                }
+            
+            // Store the listener
+            tournamentListeners.append(matchesListener)
+            group.leave()
+        }
+        
+        group.notify(queue: .main) {
+            self.currentTournamentID = tournamentID
+            self.isLoading = false
+            print("✅ Tournament listeners set up successfully")
+        }
+    }
+    
+    // Remove all listeners when they're no longer needed
+    private func removeAllListeners() {
+        for listener in tournamentListeners {
+            listener.remove()
+        }
+        tournamentListeners.removeAll()
+    }
+    
     private func generateBrackets(with teams: [TeamData]) {
         // Create a working copy of teams
         let actualTeams = teams
@@ -131,13 +309,15 @@ class TournamentDrawViewModel: ObservableObject {
         // Special case for 2 teams
         if bracketSize == 2 {
             // For 2 teams, we go directly to the finals
-            let finalsBracket = Bracket(name: "Grand Finals", matches: [
+            let finalsBracket = Bracket(id: UUID().uuidString, name: "Grand Finals", matches: [
                 createMatch(team1: tournamentTeams[0], team2: tournamentTeams[1])
             ])
             
             allBrackets.append(finalsBracket)
             DispatchQueue.main.async {
                 self.brackets = allBrackets
+                // Save the generated brackets to Firestore
+                self.saveTournamentToFirestore()
             }
             return
         }
@@ -165,7 +345,7 @@ class TournamentDrawViewModel: ObservableObject {
                 }
                 
                 // Add this round's bracket to all brackets
-                allBrackets.append(Bracket(name: roundName, matches: roundMatches))
+                allBrackets.append(Bracket(id: UUID().uuidString, name: roundName, matches: roundMatches))
             } else {
                 // Subsequent rounds - create empty brackets with placeholder matches
                 // The number of matches in this round is half the number in the previous round
@@ -176,14 +356,144 @@ class TournamentDrawViewModel: ObservableObject {
                     return createEmptyMatch()
                 }
                 
-                allBrackets.append(Bracket(name: roundName, matches: emptyMatches))
+                allBrackets.append(Bracket(id: UUID().uuidString, name: roundName, matches: emptyMatches))
             }
         }
         
         // Update the UI on the main thread
         DispatchQueue.main.async {
             self.brackets = allBrackets
+            // Save the generated brackets to Firestore
+            self.saveTournamentToFirestore()
         }
+    }
+    
+    // Function to save the generated tournament to Firestore
+    func saveTournamentToFirestore() {
+        let db = Firestore.firestore()
+        let tournamentID = UUID().uuidString
+        self.currentTournamentID = tournamentID
+        
+        let tournamentRef = db.collection("tournaments").document(tournamentID)
+        
+        // Save tournament metadata
+        tournamentRef.setData([
+            "createdAt": FieldValue.serverTimestamp(),
+            "status": "active"
+        ]) { [weak self] error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                self.errorMessage = "Failed to save tournament: \(error.localizedDescription)"
+                return
+            }
+            
+            print("🏆 Created tournament with ID: \(tournamentID)")
+            
+            // Save each bracket
+            let group = DispatchGroup()
+            
+            for (index, bracket) in self.brackets.enumerated() {
+                group.enter()
+                
+                let bracketRef = tournamentRef.collection("brackets").document(bracket.id)
+                bracketRef.setData([
+                    "name": bracket.name,
+                    "roundIndex": index
+                ]) { error in
+                    if let error = error {
+                        print("❌ Error saving bracket: \(error.localizedDescription)")
+                    }
+                    
+                    // Save each match in the bracket
+                    let matchGroup = DispatchGroup()
+                    
+                    for match in bracket.matches {
+                        matchGroup.enter()
+                        
+                        let matchData: [String: Any] = [
+                            "team1": match.team1,
+                            "team2": match.team2,
+                            "team1Score": match.team1Score,
+                            "team2Score": match.team2Score,
+                            "team1Players": match.team1Players,
+                            "team2Players": match.team2Players,
+                            "winner": match.winner
+                        ]
+                        
+                        bracketRef.collection("matches").document(match.id).setData(matchData) { error in
+                            if let error = error {
+                                print("❌ Error saving match: \(error.localizedDescription)")
+                            }
+                            matchGroup.leave()
+                        }
+                    }
+                    
+                    matchGroup.notify(queue: .main) {
+                        group.leave()
+                    }
+                }
+            }
+            
+            group.notify(queue: .main) {
+                print("✅ Tournament draw saved to Firestore successfully")
+                
+                // Store the current tournament ID for reference
+                UserDefaults.standard.set(tournamentID, forKey: "currentTournamentID")
+            }
+        }
+    }
+    
+    // Function to update match winner in Firestore
+    func updateMatchWinner(bracketId: String, matchId: String, winner: String) {
+        // Get current tournament ID
+        guard let tournamentID = self.currentTournamentID ?? UserDefaults.standard.string(forKey: "currentTournamentID") else {
+            self.errorMessage = "No active tournament found"
+            return
+        }
+        
+        // Update local state first for immediate UI response
+        if let bracketIndex = brackets.firstIndex(where: { $0.id == bracketId }),
+           let matchIndex = brackets[bracketIndex].matches.firstIndex(where: { $0.id == matchId }) {
+            
+            // Create updated match with winner
+            let match = brackets[bracketIndex].matches[matchIndex]
+            let updatedMatch = MatchData(
+                team1: match.team1,
+                team2: match.team2,
+                team1Players: match.team1Players,
+                team2Players: match.team2Players,
+                winner: winner,
+                uniqueId: match.id
+            )
+            
+            // Update brackets array
+            var updatedMatches = brackets[bracketIndex].matches
+            updatedMatches[matchIndex] = updatedMatch
+            
+            let updatedBracket = Bracket(
+                id: brackets[bracketIndex].id,
+                name: brackets[bracketIndex].name,
+                matches: updatedMatches
+            )
+            
+            // Update the published brackets array
+            brackets[bracketIndex] = updatedBracket
+        }
+        
+        // Then update Firestore
+        let db = Firestore.firestore()
+        db.collection("tournaments").document(tournamentID)
+          .collection("brackets").document(bracketId)
+          .collection("matches").document(matchId)
+          .updateData(["winner": winner]) { [weak self] error in
+              if let error = error, let self = self {
+                  self.errorMessage = "Failed to update match: \(error.localizedDescription)"
+                  print("❌ Error updating match winner: \(error.localizedDescription)")
+              } else {
+                  print("✅ Match winner updated successfully")
+              }
+          }
     }
     
     // Helper method to distribute teams and BYEs evenly throughout the bracket
@@ -351,6 +661,7 @@ class TournamentDrawViewModel: ObservableObject {
             team2: team2.name,
             team1Players: team1.players,
             team2Players: team2.players,
+            winner: "",
             uniqueId: UUID().uuidString
         )
     }
@@ -362,6 +673,7 @@ class TournamentDrawViewModel: ObservableObject {
             team2: "TBD",
             team1Players: [],
             team2Players: [],
+            winner: "",
             uniqueId: UUID().uuidString
         )
     }

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import FirebaseFirestore
+import Firebase
 
 /**
  * TeamData
@@ -70,17 +70,8 @@ class TeamService {
         }
         
         if teams.isEmpty {
-            print("⚠️ No approved teams found - creating dummy data for testing")
-            // Create dummy teams if none found in Firestore (for testing)
-            return (1...8).map { index in
-                // Create sample player names for each team
-                let dummyPlayers = [
-                    "Player \(index)A",
-                    "Player \(index)B"
-                ]
-                print("🔄 Creating dummy team: Team \(index) with players: \(dummyPlayers)")
-                return TeamData(id: "team\(index)", name: "Team \(index)", players: dummyPlayers)
-            }
+            print("⚠️ No approved teams found - tournament requires admin approval of teams")
+            return []
         }
         
         print("✅ Returning \(teams.count) approved teams")
@@ -133,18 +124,8 @@ class TeamService {
             }
             
             if teams.isEmpty {
-                print("⚠️ No valid approved teams found - creating dummy data for testing")
-                // Create dummy teams if none found in Firestore (for testing)
-                let dummyTeams = (1...8).map { index in
-                    // Create sample player names for each team
-                    let dummyPlayers = [
-                        "Player \(index)A",
-                        "Player \(index)B"
-                    ]
-                    print("🔄 Creating dummy team: Team \(index) with players: \(dummyPlayers)")
-                    return TeamData(id: "team\(index)", name: "Team \(index)", players: dummyPlayers)
-                }
-                completion(dummyTeams)
+                print("⚠️ No approved teams found - tournament requires admin approval of teams")
+                completion([])
             } else {
                 print("✅ Returning \(teams.count) approved teams")
                 completion(teams)

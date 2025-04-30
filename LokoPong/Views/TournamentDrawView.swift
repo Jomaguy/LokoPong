@@ -29,9 +29,13 @@ struct TournamentDrawView: View {
     @State private var scrollOffset: CGFloat = 0 // Precise scroll position
     @State private var scrollVelocity: CGFloat = 0
     
+    // Admin mode configuration
+    var matchSelectionHandler: ((String) -> Void)? = nil
+    
     // Initialize with a viewModel
-    init(viewModel: TournamentDrawViewModel) {
+    init(viewModel: TournamentDrawViewModel, matchSelectionHandler: ((String) -> Void)? = nil) {
         self.viewModel = viewModel
+        self.matchSelectionHandler = matchSelectionHandler
     }
     
     // For backward compatibility with existing code/previews
@@ -108,7 +112,7 @@ struct TournamentDrawView: View {
             }
         }
         .onAppear {
-            viewModel.loadTournamentData()
+            viewModel.loadTournamentFromFirestore()
         }
     }
     
@@ -119,7 +123,8 @@ struct TournamentDrawView: View {
                 BracketColumnView(bracket: viewModel.brackets[columnIndex],
                                 columnIndex: columnIndex,
                                 focusedColumnIndex: focusedColumnIndex,
-                                lastColumnIndex: numberOfColumns - 1)
+                                lastColumnIndex: numberOfColumns - 1,
+                                matchSelectionHandler: matchSelectionHandler)
                 .frame(width: columnWidth)
             }
         }
@@ -191,6 +196,7 @@ struct MatchView: View {
     let match: MatchData
     let isFirstRound: Bool
     let isTBD: Bool
+    var matchSelectionHandler: ((String) -> Void)? = nil
     
     var body: some View {
         VStack(spacing: 8) {
@@ -216,6 +222,12 @@ struct MatchView: View {
                 .stroke(Color.gray.opacity(0.3), lineWidth: 1)
         )
         .opacity(isTBD ? 0.7 : 1.0)
+        .onTapGesture {
+            // Only enable match selection if handler is provided (admin mode)
+            if let handler = matchSelectionHandler {
+                handler(match.id)
+            }
+        }
     }
     
     private func teamRow(name: String, players: [String], score: Int) -> some View {
@@ -241,6 +253,20 @@ struct MatchView: View {
                     .font(.system(size: 16, weight: .bold))
             }
         }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isWinner(name) ? Color.green.opacity(0.2) : Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isWinner(name) ? Color.green : Color.clear, lineWidth: 1)
+        )
+    }
+    
+    // Helper function to determine if a team is the winner
+    private func isWinner(_ teamName: String) -> Bool {
+        return !match.winner.isEmpty && match.winner == teamName
     }
 }
 

@@ -28,6 +28,7 @@ struct BracketColumnView: View {
     let columnIndex: Int             // Position of this column in the bracket
     let focusedColumnIndex: Int      // Currently focused column index
     let lastColumnIndex: Int         // Index of the final column
+    var matchSelectionHandler: ((String) -> Void)? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
@@ -39,7 +40,8 @@ struct BracketColumnView: View {
             ForEach(bracket.matches) { match in
                 MatchView(match: match, 
                           isFirstRound: columnIndex == 0, 
-                          isTBD: match.team1 == "TBD" || match.team2 == "TBD")
+                          isTBD: match.team1 == "TBD" || match.team2 == "TBD",
+                          matchSelectionHandler: matchSelectionHandler)
                     .padding(.vertical, 5)
             }
             
