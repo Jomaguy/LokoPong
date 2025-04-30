@@ -14,6 +14,7 @@ import FirebaseFirestore
  * - Match detail modal presentation
  * - Automatic scrolling to top when changing rounds
  * - Responsive layout based on screen size
+ * - Only displays approved teams in the tournament (approved by admin)
  */
 
 struct TournamentDrawView: View {
@@ -48,8 +49,28 @@ struct TournamentDrawView: View {
             if viewModel.isLoading {
                 ProgressView("Loading tournament data...")
             } else if let errorMessage = viewModel.errorMessage {
-                Text(errorMessage)
-                    .foregroundColor(.red)
+                VStack(spacing: 20) {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                    
+                    if errorMessage.contains("No approved teams") {
+                        Text("Teams must be approved by an administrator before they can participate in the tournament.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        
+                        Image(systemName: "person.2.badge.gearshape")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray)
+                            .padding()
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(.systemBackground))
             } else {
                 ScrollViewReader { scrollViewProxy in
                     ScrollView(.vertical, showsIndicators: false) {

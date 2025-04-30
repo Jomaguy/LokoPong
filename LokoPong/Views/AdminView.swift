@@ -1,5 +1,6 @@
 import SwiftUI
 import FirebaseAuth
+import FirebaseFirestore
 
 // Auth View Model for Admin Login
 class AuthViewModel: ObservableObject {
@@ -48,6 +49,153 @@ class AuthViewModel: ObservableObject {
             print("✅ Successfully logged out")
         } catch let error {
             print("❌ Error signing out: \(error.localizedDescription)")
+        }
+    }
+}
+
+// TeamWithApproval - Extended model for admin view with approval status
+struct TeamWithApproval: Identifiable {
+    let id: String
+    let name: String
+    let players: [String]
+    var isApproved: Bool
+    
+    // Create from TeamData
+    init(from team: TeamData, isApproved: Bool = false) {
+        self.id = team.id
+        self.name = team.name
+        self.players = team.players
+        self.isApproved = isApproved
+    }
+    
+    // Direct initializer
+    init(id: String, name: String, players: [String] = [], isApproved: Bool = false) {
+        self.id = id
+        self.name = name
+        self.players = players
+        self.isApproved = isApproved
+    }
+}
+
+// TeamApprovalsViewModel - For managing team approvals in admin section
+@MainActor
+class TeamApprovalsViewModel: ObservableObject {
+    @Published var teams: [TeamWithApproval] = []
+    @Published var isLoading = false
+    @Published var error: String?
+    
+    private let db = Firestore.firestore()
+    
+    func loadTeams() async {
+        isLoading = true
+        error = nil
+        
+        do {
+            let snapshot = try await db.collection("teams").getDocuments()
+            teams = snapshot.documents.compactMap { document -> TeamWithApproval? in
+                let data = document.data()
+                guard let name = data["name"] as? String else {
+                    return nil
+                }
+                
+                // Extract player information
+                let player1Name = data["player1Name"] as? String
+                let player2Name = data["player2Name"] as? String
+                
+                // Create array of player names (filtering out nil values)
+                var players: [String] = []
+                if let player1 = player1Name, !player1.isEmpty {
+                    players.append(player1)
+                }
+                if let player2 = player2Name, !player2.isEmpty {
+                    players.append(player2)
+                }
+                
+                let isApproved = data["isApproved"] as? Bool ?? false
+                
+                return TeamWithApproval(id: document.documentID, name: name, players: players, isApproved: isApproved)
+            }
+            isLoading = false
+        } catch {
+            self.error = "Failed to load teams: \(error.localizedDescription)"
+            isLoading = false
+        }
+    }
+    
+    func toggleApproval(for teamId: String, currentStatus: Bool) async {
+        do {
+            try await db.collection("teams").document(teamId).updateData([
+                "isApproved": !currentStatus
+            ])
+            
+            // Update local data
+            if let index = teams.firstIndex(where: { $0.id == teamId }) {
+                teams[index].isApproved.toggle()
+            }
+        } catch {
+            self.error = "Failed to update team: \(error.localizedDescription)"
+        }
+    }
+}
+
+// TeamApprovalsView - Admin interface for approving teams
+struct TeamApprovalsView: View {
+    @StateObject private var viewModel = TeamApprovalsViewModel()
+    
+    var body: some View {
+        VStack {
+            if viewModel.isLoading {
+                ProgressView("Loading teams...")
+            } else if let error = viewModel.error {
+                Text(error)
+                    .foregroundColor(.red)
+            } else if viewModel.teams.isEmpty {
+                Text("No teams to approve")
+                    .font(.headline)
+                    .foregroundColor(.gray)
+            } else {
+                List {
+                    ForEach(viewModel.teams) { team in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 8) {
+                                // Team name
+                                Text(team.name)
+                                    .font(.headline)
+                                
+                                // Player names
+                                if !team.players.isEmpty {
+                                    Text(team.players.joined(separator: ", "))
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            // Approval status and toggle button
+                            Button(action: {
+                                Task {
+                                    await viewModel.toggleApproval(for: team.id, currentStatus: team.isApproved)
+                                }
+                            }) {
+                                Image(systemName: team.isApproved ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(team.isApproved ? .green : .gray)
+                                    .font(.title2)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Team Approvals")
+        .onAppear {
+            Task {
+                await viewModel.loadTeams()
+            }
+        }
+        .refreshable {
+            await viewModel.loadTeams()
         }
     }
 }
@@ -188,10 +336,12 @@ struct AdminDashboardView: View {
             // Placeholder for future admin features
             List {
                 Section(header: Text("Team Management")) {
-                    HStack {
-                        Image(systemName: "person.2.badge.gearshape")
-                            .foregroundColor(.blue)
-                        Text("Team Approvals")
+                    NavigationLink(destination: TeamApprovalsView()) {
+                        HStack {
+                            Image(systemName: "person.2.badge.gearshape")
+                                .foregroundColor(.blue)
+                            Text("Team Approvals")
+                        }
                     }
                 }
                 
@@ -216,3 +366,6 @@ struct AdminDashboardView: View {
         }
     }
 } 
+
+
+

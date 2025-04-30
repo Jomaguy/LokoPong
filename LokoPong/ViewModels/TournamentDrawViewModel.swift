@@ -53,13 +53,53 @@ class TournamentDrawViewModel: ObservableObject {
     
     func loadTournamentData() {
         isLoading = true
+        errorMessage = nil
         
-        teamService.fetchTeams { [weak self] teams in
+        // Use approved teams only for tournament brackets
+        teamService.fetchApprovedTeams { [weak self] teams in
             guard let self = self else { return }
             
-            // Generate brackets with real team names
+            if teams.isEmpty {
+                self.errorMessage = "No approved teams available for tournament"
+                self.isLoading = false
+                return
+            }
+            
+            // Generate brackets with approved team names
             self.generateBrackets(with: teams)
             self.isLoading = false
+        }
+    }
+    
+    // Also add an async version for potential future use
+    func loadTournamentDataAsync() async {
+        DispatchQueue.main.async {
+            self.isLoading = true
+            self.errorMessage = nil
+        }
+        
+        do {
+            let approvedTeams = try await teamService.fetchApprovedTeamsAsync()
+            
+            if approvedTeams.isEmpty {
+                DispatchQueue.main.async {
+                    self.errorMessage = "No approved teams available for tournament"
+                    self.isLoading = false
+                }
+                return
+            }
+            
+            // Generate brackets with approved teams
+            generateBrackets(with: approvedTeams)
+            
+            DispatchQueue.main.async {
+                self.isLoading = false
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.errorMessage = "Failed to load tournament data: \(error.localizedDescription)"
+                self.isLoading = false
+            }
         }
     }
     
