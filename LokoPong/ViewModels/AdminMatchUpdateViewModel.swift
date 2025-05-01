@@ -35,6 +35,11 @@ class AdminMatchUpdateViewModel: ObservableObject {
         return tournamentViewModel.currentTournamentID ?? UserDefaults.standard.string(forKey: "currentTournamentID")
     }
     
+    // Helper method to check if a team is a BYE
+    private func isTeamBye(_ teamName: String) -> Bool {
+        return teamName.lowercased() == "bye"
+    }
+    
     init() {
         // Subscribe to bracket changes in the tournament view model
         tournamentViewModel.$brackets
@@ -102,6 +107,12 @@ class AdminMatchUpdateViewModel: ObservableObject {
     // Update match result with the selected winner
     func updateMatchResult(_ updatedMatch: MatchData, winner: String) {
         guard let selectedMatch = selectedMatch else { return }
+        
+        // Prevent BYE from being selected as winner
+        if isTeamBye(winner) {
+            errorMessage = "BYE cannot be selected as a winner. Please select an actual team."
+            return
+        }
         
         isProcessingUpdate = true
         errorMessage = nil

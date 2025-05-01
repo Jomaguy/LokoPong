@@ -65,6 +65,12 @@ struct MatchUpdateSheet: View {
     let onCancel: () -> Void
     
     @State private var selectedWinner: String = ""
+    @State private var errorMessage: String? = nil
+    
+    // Helper to check if a team is a BYE
+    private func isTeamBye(_ teamName: String) -> Bool {
+        return teamName.lowercased() == "bye"
+    }
     
     var body: some View {
         NavigationView {
@@ -89,11 +95,33 @@ struct MatchUpdateSheet: View {
                     Section(header: Text("Select Winner")) {
                         Picker("Winner", selection: $selectedWinner) {
                             Text("Select a winner").tag("")
-                            Text(match.team1).tag(match.team1)
-                            Text(match.team2).tag(match.team2)
+                            
+                            // Only add team1 as an option if it's not a BYE
+                            if !isTeamBye(match.team1) {
+                                Text(match.team1).tag(match.team1)
+                            }
+                            
+                            // Only add team2 as an option if it's not a BYE
+                            if !isTeamBye(match.team2) {
+                                Text(match.team2).tag(match.team2)
+                            }
                         }
                         .pickerStyle(SegmentedPickerStyle())
                         .padding(.vertical, 8)
+                        
+                        // Show explanation for BYE teams
+                        if isTeamBye(match.team1) || isTeamBye(match.team2) {
+                            Text("BYE entries cannot be selected as winners")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                                .padding(.top, 4)
+                        }
+                    }
+                    
+                    if let errorMessage = errorMessage {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.caption)
                     }
                     
                     Section {
@@ -124,6 +152,14 @@ struct MatchUpdateSheet: View {
             .onAppear {
                 // Reset selection when sheet appears
                 selectedWinner = ""
+                errorMessage = nil
+                
+                // Auto-select the non-BYE team if only one real team
+                if isTeamBye(match.team1) && !isTeamBye(match.team2) {
+                    selectedWinner = match.team2
+                } else if isTeamBye(match.team2) && !isTeamBye(match.team1) {
+                    selectedWinner = match.team1
+                }
             }
         }
     }
