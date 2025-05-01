@@ -18,8 +18,7 @@ import Firebase
 struct MatchData: Identifiable {
     let team1: String
     let team2: String
-    let team1Score: Int = 0
-    let team2Score: Int = 0
+    // Removed team score fields as they're not needed
     
     // Player information for each team
     let team1Players: [String]
@@ -340,7 +339,22 @@ class TournamentDrawViewModel: ObservableObject {
                     let team2Index = i * 2 + 1
                     
                     if team1Index < tournamentTeams.count && team2Index < tournamentTeams.count {
-                        roundMatches.append(createMatch(team1: tournamentTeams[team1Index], team2: tournamentTeams[team2Index]))
+                        let team1 = tournamentTeams[team1Index]
+                        let team2 = tournamentTeams[team2Index]
+                        
+                        // Check if either team is a BYE and set the winner accordingly
+                        var match = createMatch(team1: team1, team2: team2)
+                        
+                        // If team1 is BYE, team2 is the winner
+                        if team1.name.lowercased() == "bye" {
+                            match.winner = team2.name
+                        } 
+                        // If team2 is BYE, team1 is the winner
+                        else if team2.name.lowercased() == "bye" {
+                            match.winner = team1.name
+                        }
+                        
+                        roundMatches.append(match)
                     }
                 }
                 
@@ -358,6 +372,54 @@ class TournamentDrawViewModel: ObservableObject {
                 
                 allBrackets.append(Bracket(id: UUID().uuidString, name: roundName, matches: emptyMatches))
             }
+        }
+        
+        // Now propagate winners from BYE matches to the next round
+        if allBrackets.count > 1 {
+            let firstRoundMatches = allBrackets[0].matches
+            var secondRoundMatches = allBrackets[1].matches
+            
+            for (matchIndex, match) in firstRoundMatches.enumerated() {
+                if match.winner.isEmpty == false {
+                    // This match has a pre-determined winner (BYE match)
+                    let nextRoundMatchIndex = matchIndex / 2
+                    
+                    // Make sure we have a valid match index for the next round
+                    if nextRoundMatchIndex < secondRoundMatches.count {
+                        let isFirstMatchOfPair = matchIndex % 2 == 0
+                        let winnerPlayers = match.team1 == match.winner ? match.team1Players : match.team2Players
+                        
+                        if isFirstMatchOfPair {
+                            // Update team1 in the next round
+                            secondRoundMatches[nextRoundMatchIndex] = MatchData(
+                                team1: match.winner,
+                                team2: secondRoundMatches[nextRoundMatchIndex].team2,
+                                team1Players: winnerPlayers,
+                                team2Players: secondRoundMatches[nextRoundMatchIndex].team2Players,
+                                winner: secondRoundMatches[nextRoundMatchIndex].winner,
+                                uniqueId: secondRoundMatches[nextRoundMatchIndex].uniqueId
+                            )
+                        } else {
+                            // Update team2 in the next round
+                            secondRoundMatches[nextRoundMatchIndex] = MatchData(
+                                team1: secondRoundMatches[nextRoundMatchIndex].team1,
+                                team2: match.winner,
+                                team1Players: secondRoundMatches[nextRoundMatchIndex].team1Players,
+                                team2Players: winnerPlayers,
+                                winner: secondRoundMatches[nextRoundMatchIndex].winner,
+                                uniqueId: secondRoundMatches[nextRoundMatchIndex].uniqueId
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // Update the second round bracket with the propagated winners
+            allBrackets[1] = Bracket(
+                id: allBrackets[1].id,
+                name: allBrackets[1].name,
+                matches: secondRoundMatches
+            )
         }
         
         // Update the UI on the main thread
@@ -414,8 +476,6 @@ class TournamentDrawViewModel: ObservableObject {
                         let matchData: [String: Any] = [
                             "team1": match.team1,
                             "team2": match.team2,
-                            "team1Score": match.team1Score,
-                            "team2Score": match.team2Score,
                             "team1Players": match.team1Players,
                             "team2Players": match.team2Players,
                             "winner": match.winner
@@ -655,13 +715,13 @@ class TournamentDrawViewModel: ObservableObject {
     }
     
     // Helper method to create a match without scores
-    private func createMatch(team1: TeamData, team2: TeamData) -> MatchData {
+    private func createMatch(team1: TeamData, team2: TeamData, winner: String = "") -> MatchData {
         return MatchData(
             team1: team1.name, 
             team2: team2.name,
             team1Players: team1.players,
             team2Players: team2.players,
-            winner: "",
+            winner: winner,
             uniqueId: UUID().uuidString
         )
     }

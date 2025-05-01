@@ -201,7 +201,7 @@ struct MatchView: View {
     var body: some View {
         VStack(spacing: 8) {
             // Team 1
-            teamRow(name: match.team1, players: match.team1Players, score: match.team1Score)
+            teamRow(name: match.team1, players: match.team1Players)
             
             // Divider
             Rectangle()
@@ -209,7 +209,7 @@ struct MatchView: View {
                 .foregroundColor(.gray.opacity(0.3))
             
             // Team 2
-            teamRow(name: match.team2, players: match.team2Players, score: match.team2Score)
+            teamRow(name: match.team2, players: match.team2Players)
         }
         .padding(10)
         .background(
@@ -230,7 +230,7 @@ struct MatchView: View {
         }
     }
     
-    private func teamRow(name: String, players: [String], score: Int) -> some View {
+    private func teamRow(name: String, players: [String]) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
@@ -247,11 +247,7 @@ struct MatchView: View {
             
             Spacer()
             
-            // Show score only for non-TBD matches
-            if !isTBD {
-                Text("\(score)")
-                    .font(.system(size: 16, weight: .bold))
-            }
+            // Remove score display - no longer showing scores
         }
         .padding(4)
         .background(
