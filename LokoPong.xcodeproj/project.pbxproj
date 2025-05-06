@@ -13,6 +13,7 @@
 		47156CEB2DB83278001EAAC0 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 47156CEA2DB83278001EAAC0 /* FirebaseCore */; };
 		47156CED2DB83278001EAAC0 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 47156CEC2DB83278001EAAC0 /* FirebaseFirestore */; };
 		4756AA832DC1715400B9066F /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4756AA822DC1715400B9066F /* FirebaseAuth */; };
+		4756AA982DC3951600B9066F /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 4756AA972DC3951600B9066F /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,6 +63,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4756AA982DC3951600B9066F /* FirebaseMessaging in Frameworks */,
 				47156CE72DB8311C001EAAC0 /* FirebaseAnalytics in Frameworks */,
 				4756AA832DC1715400B9066F /* FirebaseAuth in Frameworks */,
 				47156CED2DB83278001EAAC0 /* FirebaseFirestore in Frameworks */,
@@ -133,6 +135,7 @@
 				47156CEA2DB83278001EAAC0 /* FirebaseCore */,
 				47156CEC2DB83278001EAAC0 /* FirebaseFirestore */,
 				4756AA822DC1715400B9066F /* FirebaseAuth */,
+				4756AA972DC3951600B9066F /* FirebaseMessaging */,
 			);
 			productName = LokoPong;
 			productReference = 47156CA42DB82606001EAAC0 /* LokoPong.app */;
@@ -622,6 +625,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 47156CE52DB8311C001EAAC0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		4756AA972DC3951600B9066F /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

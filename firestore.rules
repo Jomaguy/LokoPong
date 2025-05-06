@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /teams/{teamId} {
+      allow write: if true;  // Allows team registration
+      allow read: if true;   // Allows reading team data
+    }
+    match /test/{testId} {
+      allow write: if true;  // Allows our connection test
+      allow read: if true;
+    }
+    match /tournaments/{tournamentId} {
+      allow write: if true;  // Allows tournament creation and updates
+      allow read: if true;   // Allows reading tournament data
+      
+      // Also allow access to subcollections (brackets, matches)
+      match /{document=**} {
+        allow read, write: if true;
+      }
+    }
+    // Add rule for notifications collection
+    match /notifications/{notificationId} {
+      allow read, write: if true;  // Allows creating and reading notifications
+    }
+    // Add rule for device tokens collection
+    match /deviceTokens/{deviceId} {
+      allow read, write: if true;  // Allows storing device tokens
+    }
+  }
+} 

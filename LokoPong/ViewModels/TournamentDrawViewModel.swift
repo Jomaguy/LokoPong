@@ -342,17 +342,11 @@ class TournamentDrawViewModel: ObservableObject {
                         let team1 = tournamentTeams[team1Index]
                         let team2 = tournamentTeams[team2Index]
                         
-                        // Check if either team is a BYE and set the winner accordingly
-                        var match = createMatch(team1: team1, team2: team2)
+                        // Create match without automatic BYE winner
+                        let match = createMatch(team1: team1, team2: team2)
                         
-                        // If team1 is BYE, team2 is the winner
-                        if team1.name.lowercased() == "bye" {
-                            match.winner = team2.name
-                        } 
-                        // If team2 is BYE, team1 is the winner
-                        else if team2.name.lowercased() == "bye" {
-                            match.winner = team1.name
-                        }
+                        // Removed automatic BYE winner assignment
+                        // Admin will now handle this manually
                         
                         roundMatches.append(match)
                     }
@@ -374,53 +368,8 @@ class TournamentDrawViewModel: ObservableObject {
             }
         }
         
-        // Now propagate winners from BYE matches to the next round
-        if allBrackets.count > 1 {
-            let firstRoundMatches = allBrackets[0].matches
-            var secondRoundMatches = allBrackets[1].matches
-            
-            for (matchIndex, match) in firstRoundMatches.enumerated() {
-                if match.winner.isEmpty == false {
-                    // This match has a pre-determined winner (BYE match)
-                    let nextRoundMatchIndex = matchIndex / 2
-                    
-                    // Make sure we have a valid match index for the next round
-                    if nextRoundMatchIndex < secondRoundMatches.count {
-                        let isFirstMatchOfPair = matchIndex % 2 == 0
-                        let winnerPlayers = match.team1 == match.winner ? match.team1Players : match.team2Players
-                        
-                        if isFirstMatchOfPair {
-                            // Update team1 in the next round
-                            secondRoundMatches[nextRoundMatchIndex] = MatchData(
-                                team1: match.winner,
-                                team2: secondRoundMatches[nextRoundMatchIndex].team2,
-                                team1Players: winnerPlayers,
-                                team2Players: secondRoundMatches[nextRoundMatchIndex].team2Players,
-                                winner: secondRoundMatches[nextRoundMatchIndex].winner,
-                                uniqueId: secondRoundMatches[nextRoundMatchIndex].uniqueId
-                            )
-                        } else {
-                            // Update team2 in the next round
-                            secondRoundMatches[nextRoundMatchIndex] = MatchData(
-                                team1: secondRoundMatches[nextRoundMatchIndex].team1,
-                                team2: match.winner,
-                                team1Players: secondRoundMatches[nextRoundMatchIndex].team1Players,
-                                team2Players: winnerPlayers,
-                                winner: secondRoundMatches[nextRoundMatchIndex].winner,
-                                uniqueId: secondRoundMatches[nextRoundMatchIndex].uniqueId
-                            )
-                        }
-                    }
-                }
-            }
-            
-            // Update the second round bracket with the propagated winners
-            allBrackets[1] = Bracket(
-                id: allBrackets[1].id,
-                name: allBrackets[1].name,
-                matches: secondRoundMatches
-            )
-        }
+        // Removed automatic propagation of BYE match winners to next round
+        // Admin will now handle this manually
         
         // Update the UI on the main thread
         DispatchQueue.main.async {
@@ -539,6 +488,9 @@ class TournamentDrawViewModel: ObservableObject {
             
             // Update the published brackets array
             brackets[bracketIndex] = updatedBracket
+            
+            // Now propagate this winner to the next round (if there is one)
+            propagateWinnerToNextRound(currentRoundIndex: bracketIndex, matchIndex: matchIndex, winner: winner)
         }
         
         // Then update Firestore
@@ -554,6 +506,110 @@ class TournamentDrawViewModel: ObservableObject {
                   print("✅ Match winner updated successfully")
               }
           }
+    }
+    
+    // Propagate a winner from one round to the next round in the tournament bracket
+    private func propagateWinnerToNextRound(currentRoundIndex: Int, matchIndex: Int, winner: String) {
+        // Check if there's a next round to propagate to
+        guard currentRoundIndex + 1 < brackets.count else {
+            // This was the final round, no propagation needed
+            return
+        }
+        
+        // Get the next round bracket
+        let nextRoundIndex = currentRoundIndex + 1
+        let nextRoundBracket = brackets[nextRoundIndex]
+        
+        // Calculate which match in the next round this winner should advance to
+        let nextRoundMatchIndex = matchIndex / 2
+        
+        // Make sure we have a valid match in the next round
+        guard nextRoundMatchIndex < nextRoundBracket.matches.count else {
+            print("⚠️ No match found in next round for propagation")
+            return
+        }
+        
+        // Get the current match in the next round
+        var nextRoundMatch = nextRoundBracket.matches[nextRoundMatchIndex]
+        
+        // Get winner's players
+        let currentMatch = brackets[currentRoundIndex].matches[matchIndex]
+        let winnerPlayers = currentMatch.team1 == winner ? currentMatch.team1Players : currentMatch.team2Players
+        
+        // Determine if this is the first or second match that feeds into the next round
+        let isFirstMatchOfPair = matchIndex % 2 == 0
+        
+        // Update the appropriate team in the next round match
+        if isFirstMatchOfPair {
+            // This winner goes to team1 slot
+            nextRoundMatch = MatchData(
+                team1: winner,
+                team2: nextRoundMatch.team2,
+                team1Players: winnerPlayers,
+                team2Players: nextRoundMatch.team2Players,
+                winner: nextRoundMatch.winner,
+                uniqueId: nextRoundMatch.uniqueId
+            )
+        } else {
+            // This winner goes to team2 slot
+            nextRoundMatch = MatchData(
+                team1: nextRoundMatch.team1,
+                team2: winner,
+                team1Players: nextRoundMatch.team1Players,
+                team2Players: winnerPlayers,
+                winner: nextRoundMatch.winner,
+                uniqueId: nextRoundMatch.uniqueId
+            )
+        }
+        
+        // Update the next round match
+        var updatedMatches = nextRoundBracket.matches
+        updatedMatches[nextRoundMatchIndex] = nextRoundMatch
+        
+        // Create updated bracket
+        let updatedBracket = Bracket(
+            id: nextRoundBracket.id,
+            name: nextRoundBracket.name,
+            matches: updatedMatches
+        )
+        
+        // Update the brackets array
+        brackets[nextRoundIndex] = updatedBracket
+        
+        // Update the match in Firestore
+        guard let tournamentID = self.currentTournamentID ?? UserDefaults.standard.string(forKey: "currentTournamentID") else {
+            return
+        }
+        
+        let db = Firestore.firestore()
+        let matchRef = db.collection("tournaments").document(tournamentID)
+            .collection("brackets").document(updatedBracket.id)
+            .collection("matches").document(nextRoundMatch.id)
+        
+        // Only update the appropriate team field, not the entire match
+        if isFirstMatchOfPair {
+            matchRef.updateData([
+                "team1": winner,
+                "team1Players": winnerPlayers
+            ]) { error in
+                if let error = error {
+                    print("❌ Error propagating winner to next round: \(error.localizedDescription)")
+                } else {
+                    print("✅ Successfully propagated winner to next round (team1)")
+                }
+            }
+        } else {
+            matchRef.updateData([
+                "team2": winner,
+                "team2Players": winnerPlayers
+            ]) { error in
+                if let error = error {
+                    print("❌ Error propagating winner to next round: \(error.localizedDescription)")
+                } else {
+                    print("✅ Successfully propagated winner to next round (team2)")
+                }
+            }
+        }
     }
     
     // Helper method to distribute teams and BYEs evenly throughout the bracket

@@ -237,6 +237,9 @@ class AdminMatchUpdateViewModel: ObservableObject {
                     // All updates completed successfully
                     self.isProcessingUpdate = false
                     
+                    // Send notification about the completed match and next match
+                    self.sendMatchCompletionNotification(match: match, winner: winner, roundIndex: roundIndex, matchIndex: matchIndex)
+                    
                     // Reload tournament data to reflect changes
                     self.loadTournamentFromFirestore()
                 }
@@ -251,9 +254,23 @@ class AdminMatchUpdateViewModel: ObservableObject {
             print("Final round match updated with winner: \(winner)")
             isProcessingUpdate = false
             
+            // Send notification for the final match (tournament completed)
+            sendMatchCompletionNotification(match: match, winner: winner, roundIndex: roundIndex, matchIndex: matchIndex)
+            
             // Reload tournament data to reflect changes
             self.loadTournamentFromFirestore()
         }
+    }
+    
+    // Send notification about match completion and upcoming matches
+    private func sendMatchCompletionNotification(match: MatchData, winner: String, roundIndex: Int, matchIndex: Int) {
+        // Use the notification service to send match updates
+        NotificationService.shared.sendMatchCompletionNotification(
+            completedMatch: match,
+            currentRoundIndex: roundIndex,
+            matchIndex: matchIndex,
+            allBrackets: allBrackets
+        )
     }
     
     // Update local bracket data immediately for responsive UI

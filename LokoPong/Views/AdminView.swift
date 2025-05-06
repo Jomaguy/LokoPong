@@ -356,10 +356,12 @@ struct AdminDashboardView: View {
                 }
                 
                 Section(header: Text("Communication")) {
-                    HStack {
-                        Image(systemName: "bell")
-                            .foregroundColor(.red)
-                        Text("Send Notifications")
+                    NavigationLink(destination: AdminNotificationsView()) {
+                        HStack {
+                            Image(systemName: "bell")
+                                .foregroundColor(.red)
+                            Text("Send Notifications")
+                        }
                     }
                 }
             }

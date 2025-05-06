@@ -12,6 +12,9 @@ import FirebaseCore
 struct LokoPongApp: App {
     @StateObject private var tournamentManager = TournamentManager()
     
+    // Register app delegate for Firebase setup and notifications
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    
     init() {
         FirebaseApp.configure()
     }
